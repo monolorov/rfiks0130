@@ -207,16 +207,6 @@ do
 		end
 	})
 
-	Shared.UI.KeybindListToggle = Main:AddToggle({
-		Name = "Keybind List",
-		Default = true,
-		Callback = function(value)
-			if Shared.Functions.setKeybindListVisible then
-				Shared.Functions.setKeybindListVisible(value)
-			end
-		end
-	})
-
 	Shared.UI.BacktrackGhostToggle = Main:AddToggle({
 		Name = "Backtrack Ghost",
 		Default = false,
