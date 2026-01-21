@@ -761,6 +761,187 @@ do
 end
 
 -- ============================================
+-- Misc Menu (POST PROCESSING)
+-- ============================================
+do
+	local PostProcessing = MiscTab:AddSection({
+		Name = "POST PROCESSING",
+		Position = 'left'
+	})
+
+	UI.AtmoEnabled = PostProcessing:AddToggle({
+		Name = "Atmosphere Enabled",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			-- TODO: Add Atmosphere support to Visuals module
+			warn("[NEMESIS] Atmosphere not yet implemented in Visuals module")
+		end
+	})
+
+	UI.AtmoDensity = PostProcessing:AddSlider({
+		Name = "Atmosphere Density",
+		Min = 0,
+		Max = 1,
+		Default = 0.3,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Atmosphere not yet implemented")
+		end
+	})
+
+	UI.AtmoOffset = PostProcessing:AddSlider({
+		Name = "Atmosphere Offset",
+		Min = 0,
+		Max = 1,
+		Default = 0.25,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Atmosphere not yet implemented")
+		end
+	})
+
+	UI.AtmoColor = PostProcessing:AddColorPicker({
+		Name = "Atmosphere Color",
+		Default = Color3.fromRGB(200, 200, 200),
+		Callback = function(color)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Atmosphere not yet implemented")
+		end
+	})
+
+	UI.AtmoDecay = PostProcessing:AddColorPicker({
+		Name = "Atmosphere Decay",
+		Default = Color3.fromRGB(128, 128, 128),
+		Callback = function(color)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Atmosphere not yet implemented")
+		end
+	})
+
+	UI.AtmoGlare = PostProcessing:AddSlider({
+		Name = "Atmosphere Glare",
+		Min = 0,
+		Max = 1,
+		Default = 0.5,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Atmosphere not yet implemented")
+		end
+	})
+
+	UI.AtmoHaze = PostProcessing:AddSlider({
+		Name = "Atmosphere Haze",
+		Min = 0,
+		Max = 10,
+		Default = 0.5,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Atmosphere not yet implemented")
+		end
+	})
+
+	UI.BloomEnabled = PostProcessing:AddToggle({
+		Name = "Bloom Enabled",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Bloom not yet implemented")
+		end
+	})
+
+	UI.BloomIntensity = PostProcessing:AddSlider({
+		Name = "Bloom Intensity",
+		Min = 0,
+		Max = 5,
+		Default = 0.5,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Bloom not yet implemented")
+		end
+	})
+
+	UI.BloomSize = PostProcessing:AddSlider({
+		Name = "Bloom Size",
+		Min = 0,
+		Max = 100,
+		Default = 24,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Bloom not yet implemented")
+		end
+	})
+
+	UI.BloomThreshold = PostProcessing:AddSlider({
+		Name = "Bloom Threshold",
+		Min = 0,
+		Max = 5,
+		Default = 2,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] Bloom not yet implemented")
+		end
+	})
+
+	UI.CCEnabled = PostProcessing:AddToggle({
+		Name = "ColorCorrection Enabled",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] ColorCorrection not yet implemented")
+		end
+	})
+
+	UI.CCBrightness = PostProcessing:AddSlider({
+		Name = "Brightness",
+		Min = -1,
+		Max = 1,
+		Default = 0,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] ColorCorrection not yet implemented")
+		end
+	})
+
+	UI.CCContrast = PostProcessing:AddSlider({
+		Name = "Contrast",
+		Min = -1,
+		Max = 1,
+		Default = 0,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] ColorCorrection not yet implemented")
+		end
+	})
+
+	UI.CCSaturation = PostProcessing:AddSlider({
+		Name = "Saturation",
+		Min = -1,
+		Max = 1,
+		Default = 0,
+		Round = 2,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] ColorCorrection not yet implemented")
+		end
+	})
+
+	UI.CCTint = PostProcessing:AddColorPicker({
+		Name = "Tint Color",
+		Default = Color3.fromRGB(255, 255, 255),
+		Callback = function(color)
+			if APPLYING_CONFIG then return end
+			warn("[NEMESIS] ColorCorrection not yet implemented")
+		end
+	})
+end
+
+-- ============================================
 -- Config Section
 -- ============================================
 local ConfigSection = MiscTab:AddSection({
