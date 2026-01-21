@@ -327,15 +327,13 @@ end
 local function applySettings(settings)
 	if not settings then return end
 
-Rage:ApplySettings(settings)
-Visuals:ApplySettings(settings)
-World:Import(settings)
+	Rage:ApplySettings(settings)
+	World:Import(settings)
 
-if ESP then
-	ESP:ApplySettings(settings)
-end
-	
-	-- Apply watermark setting
+	if ESP then
+		ESP:ApplySettings(settings)
+	end
+
 	if settings.WATERMARK_ENABLED ~= nil then
 		setWatermarkEnabled(settings.WATERMARK_ENABLED)
 	end
