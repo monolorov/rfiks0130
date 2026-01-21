@@ -19,6 +19,10 @@ print("[NEMESIS] Loading Visuals module...")
 local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/Visuals.luau"))()
 print("[NEMESIS] Visuals loaded")
 
+print("[NEMESIS] Loading ESP module...")
+local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/Esp.luau"))()
+print("[NEMESIS] ESP loaded")
+
 print("[NEMESIS] Loading World module...")
 local WorldModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/World.luau"))()
 print("[NEMESIS] World loaded")
@@ -43,6 +47,10 @@ Notification:Notify({
 })
 
 local WatermarkEnabled = true
+
+local function setWatermarkEnabled(v)
+	WatermarkEnabled = v
+end
 local startTime = tick()
 local Stats = game:GetService("Stats")
 
@@ -259,6 +267,17 @@ local Visuals = VisualsModule.new({
 	Notification = Notification
 })
 
+local ESP = ESPModule.new({
+	Player = player,
+	GuiParent = guiParent,
+	Services = {
+		Players = Players,
+		RunService = RunService,
+		TweenService = TweenService
+	},
+	Notification = Notification
+})
+
 local Rage = RageModule.new({
 	Player = player,
 	Services = {
@@ -291,23 +310,30 @@ local function getAllSettings()
 		settings[k] = v
 	end
 
+	local espSettings = ESP:GetSettings()
+	for k, v in pairs(espSettings) do
+		settings[k] = v
+	end
+
 	local worldSettings = World:Export()
 	for k, v in pairs(worldSettings) do
 		settings[k] = v
 	end
 
-	-- Add watermark setting
 	settings.WATERMARK_ENABLED = WatermarkEnabled
-
 	return settings
 end
 
 local function applySettings(settings)
 	if not settings then return end
 
-	Rage:ApplySettings(settings)
-	Visuals:ApplySettings(settings)
-	World:Import(settings)
+Rage:ApplySettings(settings)
+Visuals:ApplySettings(settings)
+World:Import(settings)
+
+if ESP then
+	ESP:ApplySettings(settings)
+end
 	
 	-- Apply watermark setting
 	if settings.WATERMARK_ENABLED ~= nil then
@@ -415,6 +441,23 @@ local function syncUIFromVars()
 	uiSet(UI.KillFXType, visualSettings.KILLFX_TYPE)
 	uiSet(UI.BacktrackGhostToggle, visualSettings.BACKTRACK_GHOST_ENABLED)
 	uiSet(UI.BacktrackGhostDuration, visualSettings.BACKTRACK_GHOST_DURATION)
+
+local esp = ESP:GetSettings()
+uiSet(UI.ESPEnabled, esp.ESP_ENABLED)
+uiSet(UI.SelfESP, esp.SELF_ESP)
+uiSet(UI.HealthESP, esp.HEALTH_ESP)
+uiSet(UI.DistanceESP, esp.DISTANCE_ESP)
+uiSet(UI.WeaponESP, esp.WEAPON_ESP)
+uiSet(UI.CornerBox, esp.CORNER_BOX)
+uiSet(UI.TracersESP, esp.TRACERS_ENABLED)
+uiSet(UI.SkeletonESP, esp.SKELETON_ENABLED)
+uiSet(UI.ChamsEnabled, esp.CHAMS_ENABLED)
+uiSet(UI.ChamsOutline, esp.CHAMS_OUTLINE)
+uiSet(UI.ChamsSolid, esp.CHAMS_SOLID)
+uiSet(UI.ChamsGlow, esp.CHAMS_GLOW)
+uiSet(UI.TeamCheck, esp.TEAM_CHECK)
+uiSet(UI.TeamHide, esp.TEAM_HIDE)
+
 	
 	-- Sync Watermark
 	uiSet(UI.WatermarkToggle, WatermarkEnabled)
@@ -495,6 +538,11 @@ local Window = Fatality.new({
 local RageTab = Window:AddMenu({
 	Name = "RAGE",
 	Icon = "skull"
+})
+
+local ESPTab = Window:AddMenu({
+	Name = "ESP",
+	Icon = "target"
 })
 
 local VisualTab = Window:AddMenu({
@@ -1185,6 +1233,143 @@ do
 		Callback = function(color)
 			if APPLYING_CONFIG then return end
 			warn("[NEMESIS] ColorCorrection not yet implemented")
+		end
+	})
+
+do
+	local Main = ESPTab:AddSection({
+		Name = "MAIN",
+		Position = "left"
+	})
+
+	UI.ESPEnabled = Main:AddToggle({
+		Name = "Enable ESP",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetEnabled(v)
+		end
+	})
+
+	UI.SelfESP = Main:AddToggle({
+		Name = "Self ESP",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetSelfESP(v)
+		end
+	})
+
+	local Box = ESPTab:AddSection({
+		Name = "BOX",
+		Position = "center"
+	})
+
+	UI.CornerBox = Box:AddToggle({
+		Name = "Corner Box",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetCornerBox(v)
+		end
+	})
+
+	UI.HealthESP = Box:AddToggle({
+		Name = "Health",
+		Default = true,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetHealthESP(v)
+		end
+	})
+
+	UI.DistanceESP = Box:AddToggle({
+		Name = "Distance",
+		Default = true,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetDistanceESP(v)
+		end
+	})
+
+	UI.WeaponESP = Box:AddToggle({
+		Name = "Weapon",
+		Default = true,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetWeaponESP(v)
+		end
+	})
+
+	local Chams = ESPTab:AddSection({
+		Name = "CHAMS",
+		Position = "right"
+	})
+
+	UI.ChamsEnabled = Chams:AddToggle({
+		Name = "Enabled",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetChamsEnabled(v)
+		end
+	})
+
+	UI.ChamsOutline = Chams:AddToggle({
+		Name = "Outline",
+		Default = true,
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetChamsOutline(v)
+		end
+	})
+
+	UI.ChamsSolid = Chams:AddToggle({
+		Name = "Solid",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetChamsSolid(v)
+		end
+	})
+
+	UI.ChamsGlow = Chams:AddToggle({
+		Name = "Glow",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetChamsGlow(v)
+		end
+	})
+
+	local Extra = ESPTab:AddSection({
+		Name = "EXTRA",
+		Position = "left"
+	})
+
+	UI.TracersESP = Extra:AddToggle({
+		Name = "Tracers",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetTracersEnabled(v)
+		end
+	})
+
+	UI.SkeletonESP = Extra:AddToggle({
+		Name = "Skeleton",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetSkeletonEnabled(v)
+		end
+	})
+
+	UI.TeamCheck = Extra:AddToggle({
+		Name = "Team Check",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetTeamCheck(v)
+		end
+	})
+
+	UI.TeamHide = Extra:AddToggle({
+		Name = "Team Hide",
+		Callback = function(v)
+			if APPLYING_CONFIG then return end
+			ESP:SetTeamHide(v)
 		end
 	})
 end
