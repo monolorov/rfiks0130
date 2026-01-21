@@ -86,9 +86,9 @@ NemesisLabel.Parent = TextContainer
 
 local NemesisGradient = Instance.new("UIGradient")
 NemesisGradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 46, 46)),
-	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(194, 21, 21)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(158, 40, 40))
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(212, 49, 49)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 51, 51)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(194, 41, 41))
 })
 NemesisGradient.Parent = NemesisLabel
 
