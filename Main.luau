@@ -12,9 +12,16 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local guiParent = player:WaitForChild("PlayerGui")
 
--- Load modules
-local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/visuals.luau"))()
-local RageModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/rage.luau"))()
+-- ============================================
+-- Load modules (с правильными именами!)
+-- ============================================
+print("[NEMESIS] Loading Visuals module...")
+local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/Visuals.luau"))()
+print("[NEMESIS] ✓ Visuals loaded")
+
+print("[NEMESIS] Loading Rage module...")
+local RageModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/Rage.luau"))()
+print("[NEMESIS] ✓ Rage loaded")
 
 -- ============================================
 -- Loader
