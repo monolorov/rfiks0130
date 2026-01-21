@@ -1,41 +1,56 @@
--- VISUALS MODULE
 local VisualsModule = {}
 VisualsModule.__index = VisualsModule
 
 function VisualsModule.new(config)
 	local self = setmetatable({}, VisualsModule)
-	
-	-- Services
+
 	self.player = config.Player
 	self.guiParent = config.GuiParent
-	self.Players = config.Services.Players
-	self.TweenService = config.Services.TweenService
-	self.RunService = config.Services.RunService
-	self.ReplicatedStorage = config.Services.ReplicatedStorage
-	self.Workspace = config.Services.Workspace
-	self.Lighting = config.Services.Lighting
-	self.Debris = config.Services.Debris
-	self.SoundService = config.Services.SoundService
+	self.Services = config.Services or {}
+
+	self.Players = self.Services.Players
+	self.TweenService = self.Services.TweenService
+	self.RunService = self.Services.RunService
+	self.UserInputService = self.Services.UserInputService
+	self.ReplicatedStorage = self.Services.ReplicatedStorage
+	self.Workspace = self.Services.Workspace
+	self.Lighting = self.Services.Lighting
+	self.Debris = self.Services.Debris
+	self.SoundService = self.Services.SoundService
+	self.HttpService = self.Services.HttpService
+
 	self.Notification = config.Notification
-	
-	-- Settings
+	self.IsFakeLagEnabled = config.IsFakeLagEnabled
+
 	self.HITLOG_ENABLED = false
 	self.HITSOUND_ENABLED = true
 	self.HITSOUND_VOLUME = 1
 	self.HITSOUND_PRESET = "bell"
+
 	self.KEYBIND_LIST_VISIBLE = true
-	
+
 	self.TRACER_ENABLED = false
 	self.TRACER_COLOR = Color3.fromRGB(255, 100, 220)
 	self.TRACER_LIFETIME = 0.45
 	self.TRACER_WIDTH = 0.12
-	
+
+	self.TRACER_BRIGHTNESS = 20
+	self.TRACER_LIGHTEMISSION = 1
+	self.TRACER_LIGHTINFLUENCE = 0.95
+	self.TRACER_TAIL = 2
+	self.TRACER_TRANSPARENCY = NumberSequence.new({
+		NumberSequenceKeypoint.new(0.00, 1.00),
+		NumberSequenceKeypoint.new(0.125, 0.05),
+		NumberSequenceKeypoint.new(0.89, 0.0562),
+		NumberSequenceKeypoint.new(1.00, 1.00),
+	})
+
 	self.WALLBANG_ENABLED = false
 	self.WALLBANG_ENTRY_COLOR = Color3.fromRGB(255, 50, 50)
 	self.WALLBANG_EXIT_COLOR = Color3.fromRGB(50, 255, 50)
 	self.WALLBANG_MARKER_SIZE = Vector3.new(0.5, 0.5, 0.5)
 	self.WALLBANG_LIFETIME = 3
-	
+
 	self.KILLFX_ENABLED = false
 	self.KILLFX_TYPE = "ImpactFX"
 	self.KILLFX_COLOR = Color3.fromRGB(80, 160, 255)
@@ -43,19 +58,21 @@ function VisualsModule.new(config)
 	self.KILLFX_CUSTOM_DURATION = 0.25
 	self.KILLFX_LIGHT_RANGE = 15
 	self.KILLFX_LIGHT_BRIGHTNESS = 1
-	
+
 	self.OFFSCREEN_ENABLED = false
 	self.OFFSCREEN_COLOR = Color3.fromRGB(255, 80, 80)
-	
+
 	self.BACKTRACK_GHOST_ENABLED = false
 	self.BACKTRACK_GHOST_COLOR = Color3.fromRGB(80, 160, 255)
 	self.BACKTRACK_GHOST_DURATION = 0.3
-	
+
 	self.KILLIMAGE_ENABLED = false
 	self.KILLIMAGE_COLOR = Color3.fromRGB(80, 160, 255)
+	self.KILLIMAGE_FADE_IN = 0.08
+	self.KILLIMAGE_HOLD = 0.1
+	self.KILLIMAGE_FADE_OUT = 0.6
 	self.KILLIMAGE_MAX_ALPHA = 0.45
-	
-	-- POST PROCESSING SETTINGS
+
 	self.ATMOSPHERE_ENABLED = false
 	self.ATMOSPHERE_DENSITY = 0.3
 	self.ATMOSPHERE_OFFSET = 0.25
@@ -74,20 +91,32 @@ function VisualsModule.new(config)
 	self.COLOR_CORRECTION_CONTRAST = 0
 	self.COLOR_CORRECTION_SATURATION = 0
 	self.COLOR_CORRECTION_TINT = Color3.fromRGB(255, 255, 255)
-	
-	-- Internal state
+
 	self.tracerPool = {}
 	self.MAX_TRACER_POOL = 12
+
 	self.arrows = {}
 	self.hitlogContainer = nil
-	self.KeybindUI = {}
+	self.hitlogOrder = 0
+
+	self.KeybindUI = { Container = nil, ContentContainer = nil, ActiveBinds = {}, Visible = true }
+	self._bindInputBegan = nil
+	self._bindInputEnded = nil
+
 	self.ghostModel = nil
 	self.ghostExpireAt = 0
 	self.sourceCharacter = nil
+	self.lastFakeLagState = nil
 	self.ghostParts = {}
-	
+	self.ghostLastCFrames = {}
+	self.GHOST_SMOOTH_SPEED = 45
+	self._hbLast = tick()
+	self._ghostDt = 1 / 60
+
+	self.killImage = nil
+
 	self:Initialize()
-	
+
 	return self
 end
 
@@ -95,14 +124,13 @@ function VisualsModule:Initialize()
 	self.Camera = self.Workspace.CurrentCamera
 	self.FX_ROOT = self.ReplicatedStorage:WaitForChild("FXTemplates")
 	self.HITSOUND_STORAGE = self.guiParent:WaitForChild("ScreenGui"):WaitForChild("storage")
-	
-	-- BACKUP ORIGINAL EFFECTS
+
 	self.ORIGINAL_EFFECTS = {
 		Atmosphere = self:SnapshotFirstEffect("Atmosphere"),
 		BloomEffect = self:SnapshotFirstEffect("BloomEffect"),
 		ColorCorrectionEffect = self:SnapshotFirstEffect("ColorCorrectionEffect"),
 	}
-	
+
 	self:CreateHitlogUI()
 	self:CreateKeybindUI()
 	self:CreateOffscreenArrows()
@@ -111,9 +139,6 @@ function VisualsModule:Initialize()
 	self:SetupKillFXListener()
 end
 
--- ============================================
--- HITLOG SYSTEM
--- ============================================
 function VisualsModule:CreateHitlogUI()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "NemesisHitlogs"
@@ -147,7 +172,7 @@ function VisualsModule:ShowHitlog(hitType, info)
 	if not self.HITLOG_ENABLED then return end
 	if not self.hitlogContainer then return end
 
-	self.hitlogOrder = self.hitlogOrder + 1
+	self.hitlogOrder += 1
 	local textLabel = Instance.new("TextLabel")
 	textLabel.Name = "Hitlog_" .. self.hitlogOrder
 	textLabel.Active = false
@@ -176,11 +201,29 @@ function VisualsModule:ShowHitlog(hitType, info)
 				tonumber(info.hitchance) or 0,
 				tonumber(info.roll) or 0,
 				tonumber(info.distance) or 0)
+		elseif reason == "min_damage" then
+			textLabel.Text = string.format("MISS | DMG < %d | %d studs",
+				tonumber(info.minDamage) or 0,
+				tonumber(info.distance) or 0)
+		elseif reason == "wall_blocking_target" then
+			textLabel.Text = string.format("MISS | WALL | %d studs", tonumber(info.distance) or 0)
+		elseif reason == "too_far" then
+			textLabel.Text = string.format("MISS | TOO FAR | %d studs", tonumber(info.distance) or 0)
+		elseif reason == "bad_angle" then
+			textLabel.Text = string.format("MISS | ANGLE | %d°", tonumber(info.angle) or 0)
+		elseif reason == "no_target" then
+			textLabel.Text = "MISS | NO TARGET"
+		elseif reason == "target_dead" then
+			textLabel.Text = "MISS | DEAD"
+		elseif reason == "friendly_fire" then
+			textLabel.Text = "MISS | TEAM"
 		else
 			textLabel.Text = "MISS"
 		end
+	elseif hitType == "Hit" then
+		textLabel.Text = "HIT"
 	else
-		textLabel.Text = hitType == "Hit" and "HIT" or "MISS"
+		textLabel.Text = "MISS"
 	end
 
 	local tweenInfoShow = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -200,18 +243,30 @@ function VisualsModule:ShowHitlog(hitType, info)
 	end)
 end
 
--- ============================================
--- HITSOUND SYSTEM
--- ============================================
 function VisualsModule:PlayHitSound()
 	if not self.HITSOUND_ENABLED then return end
 
 	local HITSOUND_MAP = {
-		correct = "HitSfx13", skeet = "HitSfx", orchestra = "HitSfx2", bow = "HitSfx3",
-		uwu = "HitSfx4", tf2 = "HitSfx5", b8 = "HitSfx6", basketball = "HitSfx7",
-		idk = "HitSfx8", orb = "HitSfx9", balltap = "HitSfx10", softbell = "HitSfx11",
-		softhit = "HitSfx12", soft = "HitSfx14", bell2 = "HitSfx15", tank1 = "HitSfx16",
-		rampage = "HitSfx18", headshot = "HitSfx19", tank2 = "HitSfx20", rust = "HitSfx22"
+		correct = "HitSfx13",
+		skeet = "HitSfx",
+		orchestra = "HitSfx2",
+		bow = "HitSfx3",
+		uwu = "HitSfx4",
+		tf2 = "HitSfx5",
+		b8 = "HitSfx6",
+		basketball = "HitSfx7",
+		idk = "HitSfx8",
+		orb = "HitSfx9",
+		balltap = "HitSfx10",
+		softbell = "HitSfx11",
+		softhit = "HitSfx12",
+		soft = "HitSfx14",
+		bell2 = "HitSfx15",
+		tank1 = "HitSfx16",
+		rampage = "HitSfx18",
+		headshot = "HitSfx19",
+		tank2 = "HitSfx20",
+		rust = "HitSfx22",
 	}
 
 	if self.HITSOUND_PRESET == "bell" then
@@ -239,7 +294,6 @@ function VisualsModule:PlayHitSound()
 		sound = src:FindFirstChildWhichIsA("Sound", true)
 		if sound then sound = sound:Clone() end
 	end
-
 	if not sound then return end
 
 	sound.Volume = self.HITSOUND_VOLUME
@@ -248,9 +302,6 @@ function VisualsModule:PlayHitSound()
 	self.Debris:AddItem(sound, math.max(sound.TimeLength + 0.3, 2))
 end
 
--- ============================================
--- KEYBIND UI SYSTEM
--- ============================================
 function VisualsModule:CreateKeybindUI()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "NemesisKeybinds"
@@ -269,9 +320,33 @@ function VisualsModule:CreateKeybindUI()
 	container.ClipsDescendants = true
 	container.Parent = screenGui
 
+	local blur = Instance.new("ImageLabel")
+	blur.Name = "Blur"
+	blur.Size = UDim2.new(1, 0, 1, 0)
+	blur.BackgroundTransparency = 1
+	blur.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+	blur.ImageTransparency = 0.95
+	blur.ScaleType = Enum.ScaleType.Tile
+	blur.TileSize = UDim2.new(0, 128, 0, 128)
+	blur.Parent = container
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = container
+
+	local shadow = Instance.new("ImageLabel")
+	shadow.Name = "Shadow"
+	shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+	shadow.BackgroundTransparency = 1
+	shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+	shadow.Size = UDim2.new(1, 30, 1, 30)
+	shadow.ZIndex = 0
+	shadow.Image = "rbxassetid://5554236805"
+	shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+	shadow.ImageTransparency = 0.5
+	shadow.ScaleType = Enum.ScaleType.Slice
+	shadow.SliceCenter = Rect.new(23, 23, 277, 277)
+	shadow.Parent = container
 
 	local titleBar = Instance.new("Frame")
 	titleBar.Name = "TitleBar"
@@ -280,6 +355,18 @@ function VisualsModule:CreateKeybindUI()
 	titleBar.BackgroundTransparency = 0.3
 	titleBar.BorderSizePixel = 0
 	titleBar.Parent = container
+
+	local titleCorner = Instance.new("UICorner")
+	titleCorner.CornerRadius = UDim.new(0, 8)
+	titleCorner.Parent = titleBar
+
+	local titleFix = Instance.new("Frame")
+	titleFix.Size = UDim2.new(1, 0, 0, 8)
+	titleFix.Position = UDim2.new(0, 0, 1, -8)
+	titleFix.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	titleFix.BackgroundTransparency = 0.3
+	titleFix.BorderSizePixel = 0
+	titleFix.Parent = titleBar
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "Title"
@@ -308,9 +395,52 @@ function VisualsModule:CreateKeybindUI()
 	listLayout.Padding = UDim.new(0, 4)
 	listLayout.Parent = contentContainer
 
+	local listPadding = Instance.new("UIPadding")
+	listPadding.PaddingTop = UDim.new(0, 8)
+	listPadding.PaddingBottom = UDim.new(0, 8)
+	listPadding.PaddingLeft = UDim.new(0, 12)
+	listPadding.PaddingRight = UDim.new(0, 12)
+	listPadding.Parent = contentContainer
+
+	local dragging = false
+	local dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		self.TweenService:Create(container, tweenInfo, {Position = newPos}):Play()
+	end
+
+	titleBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = container.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	titleBar.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	if self.UserInputService then
+		self.UserInputService.InputChanged:Connect(function(input)
+			if input == dragInput and dragging then
+				update(input)
+			end
+		end)
+	end
+
 	self.KeybindUI.Container = container
 	self.KeybindUI.ContentContainer = contentContainer
-	self.KeybindUI.ActiveBinds = {}
 	self.KeybindUI.Visible = true
 end
 
@@ -326,7 +456,57 @@ function VisualsModule:UpdateKeybindDisplay()
 	local activeCount = 0
 	for name, data in pairs(self.KeybindUI.ActiveBinds) do
 		if data.enabled then
-			activeCount = activeCount + 1
+			activeCount += 1
+
+			local bindFrame = Instance.new("Frame")
+			bindFrame.Name = "Bind_" .. name
+			bindFrame.Size = UDim2.new(1, 0, 0, 24)
+			bindFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+			bindFrame.BackgroundTransparency = 0.4
+			bindFrame.BorderSizePixel = 0
+			bindFrame.LayoutOrder = activeCount
+			bindFrame.Parent = self.KeybindUI.ContentContainer
+
+			local bindCorner = Instance.new("UICorner")
+			bindCorner.CornerRadius = UDim.new(0, 4)
+			bindCorner.Parent = bindFrame
+
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Name = "NameLabel"
+			nameLabel.Size = UDim2.new(1, -50, 1, 0)
+			nameLabel.Position = UDim2.new(0, 8, 0, 0)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = name
+			nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			nameLabel.TextSize = 12
+			nameLabel.Font = Enum.Font.Gotham
+			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+			nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+			nameLabel.TextTransparency = 0
+			nameLabel.Parent = bindFrame
+
+			local stateLabel = Instance.new("TextLabel")
+			stateLabel.Name = "StateLabel"
+			stateLabel.Size = UDim2.new(0, 40, 1, 0)
+			stateLabel.Position = UDim2.new(1, -48, 0, 0)
+			stateLabel.BackgroundTransparency = 1
+			stateLabel.Text = "[" .. (data.state or "on") .. "]"
+			stateLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+			stateLabel.TextSize = 11
+			stateLabel.Font = Enum.Font.GothamMedium
+			stateLabel.TextXAlignment = Enum.TextXAlignment.Right
+			stateLabel.TextYAlignment = Enum.TextYAlignment.Center
+			stateLabel.TextTransparency = 0
+			stateLabel.Parent = bindFrame
+
+			bindFrame.BackgroundTransparency = 1
+			nameLabel.TextTransparency = 1
+			stateLabel.TextTransparency = 1
+
+			local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			self.TweenService:Create(bindFrame, tweenInfo, {BackgroundTransparency = 0.4}):Play()
+			self.TweenService:Create(nameLabel, tweenInfo, {TextTransparency = 0}):Play()
+			self.TweenService:Create(stateLabel, tweenInfo, {TextTransparency = 0}):Play()
 		end
 	end
 
@@ -336,14 +516,74 @@ function VisualsModule:UpdateKeybindDisplay()
 	local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	self.TweenService:Create(self.KeybindUI.Container, tweenInfo, {Size = UDim2.new(0, 220, 0, totalHeight)}):Play()
 
+	if activeCount == 0 and self.KeybindUI.Visible then
+		task.wait(0.1)
+		local fadeInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		self.TweenService:Create(self.KeybindUI.Container, fadeInfo, {BackgroundTransparency = 1}):Play()
+		self.TweenService:Create(self.KeybindUI.Container.TitleBar, fadeInfo, {BackgroundTransparency = 1}):Play()
+		self.TweenService:Create(self.KeybindUI.Container.TitleBar.Title, fadeInfo, {TextTransparency = 1}):Play()
+	elseif activeCount > 0 then
+		local fadeInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		self.TweenService:Create(self.KeybindUI.Container, fadeInfo, {BackgroundTransparency = 0.15}):Play()
+		self.TweenService:Create(self.KeybindUI.Container.TitleBar, fadeInfo, {BackgroundTransparency = 0.3}):Play()
+		self.TweenService:Create(self.KeybindUI.Container.TitleBar.Title, fadeInfo, {TextTransparency = 0}):Play()
+	end
+
 	if self.KeybindUI.Container then
 		self.KeybindUI.Container.Visible = self.KeybindUI.Visible and (activeCount > 0)
 	end
 end
 
--- ============================================
--- OFFSCREEN ARROWS
--- ============================================
+function VisualsModule:RegisterKeybind(name, keyCode, callback, mode)
+	if not self.UserInputService then return end
+
+	mode = mode or "toggle"
+	self.KeybindUI.ActiveBinds[name] = {
+		key = keyCode,
+		callback = callback,
+		mode = mode,
+		enabled = false,
+		state = mode == "toggle" and "off" or "inactive",
+	}
+
+	if not self._bindInputBegan then
+		self._bindInputBegan = self.UserInputService.InputBegan:Connect(function(input, gpe)
+			if gpe then return end
+			if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+			for _, bind in pairs(self.KeybindUI.ActiveBinds) do
+				if bind.key == input.KeyCode then
+					if bind.mode == "toggle" then
+						bind.enabled = not bind.enabled
+						bind.state = bind.enabled and "on" or "off"
+						if bind.callback then bind.callback(bind.enabled) end
+					else
+						bind.enabled = true
+						bind.state = "active"
+						if bind.callback then bind.callback(true) end
+					end
+					self:UpdateKeybindDisplay()
+				end
+			end
+		end)
+
+		self._bindInputEnded = self.UserInputService.InputEnded:Connect(function(input, gpe)
+			if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+			for _, bind in pairs(self.KeybindUI.ActiveBinds) do
+				if bind.mode == "hold" and bind.key == input.KeyCode then
+					bind.enabled = false
+					bind.state = "inactive"
+					if bind.callback then bind.callback(false) end
+					self:UpdateKeybindDisplay()
+				end
+			end
+		end)
+	end
+
+	self:UpdateKeybindDisplay()
+end
+
 function VisualsModule:CreateOffscreenArrows()
 	local OffscreenGui = Instance.new("ScreenGui")
 	OffscreenGui.Name = "NemesisOffscreen"
@@ -352,7 +592,7 @@ function VisualsModule:CreateOffscreenArrows()
 	OffscreenGui.Parent = self.guiParent
 
 	self.OffscreenGui = OffscreenGui
-	
+
 	local function isEnemy(plr)
 		if self.player.Team and plr.Team then
 			return self.player.Team ~= plr.Team
@@ -381,11 +621,10 @@ function VisualsModule:CreateOffscreenArrows()
 	end
 
 	self.Players.PlayerAdded:Connect(function(plr)
-		if isEnemy(plr) then
+		if plr ~= self.player and isEnemy(plr) then
 			createArrow(plr)
 		end
 	end)
-	
 	self.Players.PlayerRemoving:Connect(removeArrow)
 
 	for _, p in ipairs(self.Players:GetPlayers()) do
@@ -394,7 +633,28 @@ function VisualsModule:CreateOffscreenArrows()
 		end
 	end
 
+	local function refreshArrows()
+		for plr, arrow in pairs(self.arrows) do
+			if not isEnemy(plr) then
+				arrow:Destroy()
+				self.arrows[plr] = nil
+			end
+		end
+
+		for _, plr in ipairs(self.Players:GetPlayers()) do
+			if plr ~= self.player and isEnemy(plr) and not self.arrows[plr] then
+				createArrow(plr)
+			end
+		end
+	end
+
+	self.player:GetPropertyChangedSignal("Team"):Connect(refreshArrows)
+
 	self.RunService.RenderStepped:Connect(function()
+		self.Camera = self.Workspace.CurrentCamera or self.Camera
+		local Camera = self.Camera
+		if not Camera then return end
+
 		if not self.OFFSCREEN_ENABLED then
 			for _, a in pairs(self.arrows) do
 				a.Visible = false
@@ -402,9 +662,9 @@ function VisualsModule:CreateOffscreenArrows()
 			return
 		end
 
-		local camCF = self.Camera.CFrame
+		local camCF = Camera.CFrame
 		local camPos = camCF.Position
-		local vp = self.Camera.ViewportSize
+		local vp = Camera.ViewportSize
 		local center = Vector2.new(vp.X / 2, vp.Y / 2)
 
 		for plr, arrow in pairs(self.arrows) do
@@ -412,7 +672,7 @@ function VisualsModule:CreateOffscreenArrows()
 				arrow.Visible = false
 				continue
 			end
-			
+
 			local char = plr.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			local hum = char and char:FindFirstChild("Humanoid")
@@ -422,7 +682,7 @@ function VisualsModule:CreateOffscreenArrows()
 				continue
 			end
 
-			local screenPos, onScreen = self.Camera:WorldToViewportPoint(hrp.Position)
+			local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
 
 			if onScreen and screenPos.Z > 0 then
 				if screenPos.X > 0 and screenPos.X < vp.X and screenPos.Y > 0 and screenPos.Y < vp.Y then
@@ -435,6 +695,7 @@ function VisualsModule:CreateOffscreenArrows()
 			local camRight = camCF.RightVector
 			local x = toPlayer:Dot(camRight)
 			local z = toPlayer:Dot(camCF.LookVector)
+
 			local angle = math.atan2(x, z)
 			local rot = math.deg(angle)
 
@@ -449,16 +710,12 @@ function VisualsModule:CreateOffscreenArrows()
 	end)
 end
 
--- ============================================
--- TRACER SYSTEM
--- ============================================
 function VisualsModule:CreateTracer(startPos, endPos)
 	if not self.TRACER_ENABLED then return end
 
 	local distance = (endPos - startPos).Magnitude
 	if distance < 0.5 then return end
 
-	-- Wallbang check
 	if self.WALLBANG_ENABLED then
 		local direction = (endPos - startPos)
 		local dirUnit = direction.Unit
@@ -467,7 +724,7 @@ function VisualsModule:CreateTracer(startPos, endPos)
 		params.FilterType = Enum.RaycastFilterType.Exclude
 		local char = self.player.Character
 		if char then
-			params.FilterDescendantsInstances = {char}
+			params.FilterDescendantsInstances = { char }
 		end
 
 		local rayForward = self.Workspace:Raycast(startPos, dirUnit * distance, params)
@@ -514,20 +771,27 @@ function VisualsModule:CreateTracer(startPos, endPos)
 		trail.Attachment1 = a1
 		trail.Enabled = false
 		trail.FaceCamera = true
-		trail.Brightness = 20
-		trail.LightEmission = 1
-		trail.LightInfluence = 0.95
+		trail.Brightness = self.TRACER_BRIGHTNESS
+		trail.LightEmission = self.TRACER_LIGHTEMISSION
+		trail.LightInfluence = self.TRACER_LIGHTINFLUENCE
 		trail.TextureMode = Enum.TextureMode.Stretch
 		trail.Texture = "rbxassetid://93746968407218"
 		trail.TextureLength = 3
+		trail.Transparency = self.TRACER_TRANSPARENCY
 		trail.Parent = mover
 
 		tracerObj = { folder = folder, mover = mover, a0 = a0, a1 = a1, trail = trail }
 	end
 
+	local w = math.clamp(self.TRACER_WIDTH, 0.02, 0.25)
+
 	tracerObj.trail.Color = ColorSequence.new(self.TRACER_COLOR)
 	tracerObj.trail.Lifetime = self.TRACER_LIFETIME
-	tracerObj.trail.WidthScale = NumberSequence.new(math.clamp(self.TRACER_WIDTH, 0.02, 0.25))
+	tracerObj.trail.WidthScale = NumberSequence.new(w)
+	tracerObj.trail.Transparency = self.TRACER_TRANSPARENCY
+	tracerObj.trail.Brightness = self.TRACER_BRIGHTNESS
+	tracerObj.trail.LightEmission = self.TRACER_LIGHTEMISSION
+	tracerObj.trail.LightInfluence = self.TRACER_LIGHTINFLUENCE
 
 	local dir = (endPos - startPos)
 	local unit = dir.Unit
@@ -535,12 +799,12 @@ function VisualsModule:CreateTracer(startPos, endPos)
 	tracerObj.folder.Parent = self.Workspace
 	tracerObj.mover.CFrame = CFrame.lookAt(startPos, startPos + unit)
 	tracerObj.a0.Position = Vector3.new(0, 0, 0)
-	tracerObj.a1.Position = Vector3.new(0, 0, -2)
+	tracerObj.a1.Position = Vector3.new(0, 0, -self.TRACER_TAIL)
 	tracerObj.trail.Enabled = true
 
 	local flyTime = math.clamp(distance / 2200, 0.06, 0.22)
 	local tween = self.TweenService:Create(tracerObj.mover, TweenInfo.new(flyTime, Enum.EasingStyle.Linear), {
-		CFrame = CFrame.lookAt(endPos, endPos + unit)
+		CFrame = CFrame.lookAt(endPos, endPos + unit),
 	})
 	tween:Play()
 
@@ -558,9 +822,6 @@ function VisualsModule:CreateTracer(startPos, endPos)
 	end)
 end
 
--- ============================================
--- WALLBANG MARKERS
--- ============================================
 function VisualsModule:CreateWallbangMarker(pos, color)
 	local part = Instance.new("Part")
 	part.Name = "WallbangMarker"
@@ -575,21 +836,18 @@ function VisualsModule:CreateWallbangMarker(pos, color)
 	part.Parent = self.Workspace
 
 	part.Transparency = 0
-	local tIn = self.TweenService:Create(part, TweenInfo.new(0.3), {Transparency = 0})
+	local tIn = self.TweenService:Create(part, TweenInfo.new(0.3), { Transparency = 0 })
 	tIn:Play()
 
 	self.Debris:AddItem(part, self.WALLBANG_LIFETIME)
 
 	task.delay(self.WALLBANG_LIFETIME - 0.5, function()
 		if part.Parent then
-			self.TweenService:Create(part, TweenInfo.new(0.5), {Transparency = 1, Size = Vector3.new(0,0,0)}):Play()
+			self.TweenService:Create(part, TweenInfo.new(0.5), { Transparency = 1, Size = Vector3.new(0, 0, 0) }):Play()
 		end
 	end)
 end
 
--- ============================================
--- KILL FX SYSTEM
--- ============================================
 function VisualsModule:CreateKillImageGUI()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "NemesisKillImage"
@@ -623,68 +881,48 @@ function VisualsModule:PlayKillImage()
 
 	local tIn = self.TweenService:Create(
 		self.killImage,
-		TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		TweenInfo.new(self.KILLIMAGE_FADE_IN, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ ImageTransparency = 1 - self.KILLIMAGE_MAX_ALPHA }
 	)
 
 	local tOut = self.TweenService:Create(
 		self.killImage,
-		TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		TweenInfo.new(self.KILLIMAGE_FADE_OUT, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 		{ ImageTransparency = 1 }
 	)
 
 	tIn:Play()
 	tIn.Completed:Wait()
-	task.wait(0.1)
+	task.wait(self.KILLIMAGE_HOLD)
 	tOut:Play()
 end
 
-function VisualsModule:SetupKillFXListener()
-	local InfEvent = self.ReplicatedStorage:WaitForChild("inf", 10)
-	if not InfEvent then return end
-
-	InfEvent.OnClientEvent:Connect(function(killedPlayerName)
-		if not self.KILLFX_ENABLED then return end
-
-		local killedPlayer = self.Players:FindFirstChild(killedPlayerName)
-		if not killedPlayer then return end
-
-		local char = killedPlayer.Character
-		if not char then return end
-
-		local head = char:FindFirstChild("Head")
-		if not head then return end
-
-		local pos = head.Position
-
-		if self.KILLFX_TYPE == "ImpactFX" then
-			self:PlayImpactFX(pos)
-		elseif self.KILLFX_TYPE == "CustomFX" then
-			self:PlayCustomFX(pos)
+function VisualsModule:FixFxInstance(fx, cf)
+	if fx:IsA("Model") then
+		for _, d in ipairs(fx:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide = false
+				d.CanQuery = false
+				d.CanTouch = false
+			end
 		end
-	end)
+		fx:PivotTo(cf)
+	elseif fx:IsA("BasePart") then
+		fx.Anchored = true
+		fx.CanCollide = false
+		fx.CanQuery = false
+		fx.CanTouch = false
+		fx.CFrame = cf
+	end
+end
 
-	task.spawn(function()
-		local htl = self.ReplicatedStorage:WaitForChild("htl", 10)
-		if not htl then return end
-
-		htl.OnClientEvent:Connect(function(hitType, info)
-			if hitType == "Hit" then
-				self:PlayHitSound()
-
-				if self.KILLIMAGE_ENABLED and info then
-					local dmg = info.damage or 0
-					if dmg > 99 then
-						self:PlayKillImage()
-					end
-				end
-			end
-
-			if self.HITLOG_ENABLED then
-				self:ShowHitlog(hitType, info)
-			end
-		end)
-	end)
+function VisualsModule:RecolorParticles(root, color)
+	for _, d in ipairs(root:GetDescendants()) do
+		if d:IsA("ParticleEmitter") then
+			d.Color = ColorSequence.new(color)
+		end
+	end
 end
 
 function VisualsModule:PlayImpactFX(position)
@@ -692,17 +930,13 @@ function VisualsModule:PlayImpactFX(position)
 	if not template then return end
 
 	local fx = template:Clone()
-	fx.Anchored = true
-	fx.CanCollide = false
-	fx.CanQuery = false
-	fx.CanTouch = false
-	fx.Transparency = 1
-	fx.CFrame = CFrame.new(position)
+	self:FixFxInstance(fx, CFrame.new(position))
 	fx.Parent = self.Workspace
+
+	self:RecolorParticles(fx, self.KILLFX_COLOR)
 
 	for _, d in ipairs(fx:GetDescendants()) do
 		if d:IsA("ParticleEmitter") then
-			d.Color = ColorSequence.new(self.KILLFX_COLOR)
 			d.Enabled = true
 		end
 	end
@@ -725,20 +959,10 @@ function VisualsModule:PlayCustomFX(position)
 	if not template then return end
 
 	local fx = template:Clone()
-	fx.Anchored = true
-	fx.CanCollide = false
-	fx.CanQuery = false
-	fx.CanTouch = false
-	fx.Transparency = 1
-	fx.CFrame = CFrame.new(position)
+	self:FixFxInstance(fx, CFrame.new(position))
 	fx.Parent = self.Workspace
 
-	for _, d in ipairs(fx:GetDescendants()) do
-		if d:IsA("ParticleEmitter") then
-			d.Color = ColorSequence.new(self.KILLFX_COLOR)
-			d.Enabled = true
-		end
-	end
+	self:RecolorParticles(fx, self.KILLFX_COLOR)
 
 	local light = fx:FindFirstChild("PointLight") or fx:FindFirstChildWhichIsA("PointLight", true)
 	if light then
@@ -747,13 +971,19 @@ function VisualsModule:PlayCustomFX(position)
 		light.Brightness = self.KILLFX_LIGHT_BRIGHTNESS
 		light.Enabled = true
 
-		local tIn = self.TweenService:Create(light, TweenInfo.new(self.KILLFX_CUSTOM_DURATION * 0.5, Enum.EasingStyle.Quad), {Range = self.KILLFX_LIGHT_RANGE})
-		local tOut = self.TweenService:Create(light, TweenInfo.new(self.KILLFX_CUSTOM_DURATION * 0.5, Enum.EasingStyle.Quad), {Range = 0})
+		local tIn = self.TweenService:Create(light, TweenInfo.new(self.KILLFX_CUSTOM_DURATION * 0.5, Enum.EasingStyle.Quad), { Range = self.KILLFX_LIGHT_RANGE })
+		local tOut = self.TweenService:Create(light, TweenInfo.new(self.KILLFX_CUSTOM_DURATION * 0.5, Enum.EasingStyle.Quad), { Range = 0 })
 
 		tIn:Play()
 		tIn.Completed:Once(function()
 			tOut:Play()
 		end)
+	end
+
+	for _, d in ipairs(fx:GetDescendants()) do
+		if d:IsA("ParticleEmitter") then
+			d.Enabled = true
+		end
 	end
 
 	task.delay(self.KILLFX_CUSTOM_DURATION, function()
@@ -769,21 +999,88 @@ function VisualsModule:PlayCustomFX(position)
 	self.Debris:AddItem(fx, 2)
 end
 
--- ============================================
--- BACKTRACK GHOST
--- ============================================
+function VisualsModule:SetupKillFXListener()
+	local InfEvent = self.ReplicatedStorage:WaitForChild("inf", 10)
+	if InfEvent then
+		InfEvent.OnClientEvent:Connect(function(killedPlayerName)
+			if not self.KILLFX_ENABLED then return end
+
+			local killedPlayer = self.Players:FindFirstChild(killedPlayerName)
+			if not killedPlayer then return end
+
+			local char = killedPlayer.Character
+			if not char then return end
+
+			local head = char:FindFirstChild("Head")
+			if not head then return end
+
+			local pos = head.Position
+			if self.KILLFX_TYPE == "ImpactFX" then
+				self:PlayImpactFX(pos)
+			elseif self.KILLFX_TYPE == "CustomFX" then
+				self:PlayCustomFX(pos)
+			end
+		end)
+	end
+
+	task.spawn(function()
+		local htl = self.ReplicatedStorage:WaitForChild("htl", 10)
+		if not htl then return end
+
+		htl.OnClientEvent:Connect(function(hitType, info)
+			if hitType == "Hit" then
+				self:PlayHitSound()
+			end
+
+			if hitType == "Hit" and info and self.KILLIMAGE_ENABLED then
+				local dmg = info.damage or 0
+				if dmg > 99 then
+					self:PlayKillImage()
+				end
+			end
+
+			if self.HITLOG_ENABLED then
+				self:ShowHitlog(hitType, info)
+			end
+		end)
+	end)
+end
+
+function VisualsModule:IsFakeLagEnabledFallback()
+	if typeof(self.IsFakeLagEnabled) == "function" then
+		local ok, v = pcall(self.IsFakeLagEnabled)
+		if ok then return v == true end
+	end
+	if _G.ConfigSystem and _G.ConfigSystem.settings then
+		return _G.ConfigSystem.settings["FakeLag"] == true
+	end
+	return false
+end
+
 function VisualsModule:SetupBacktrackGhost()
 	local backtrackRemote = self.ReplicatedStorage:WaitForChild("btl")
 	local lastSend = 0
 
+	local ghostsFolder = self.Workspace:FindFirstChild("BacktrackGhosts") or Instance.new("Folder", self.Workspace)
+	ghostsFolder.Name = "BacktrackGhosts"
+	self._ghostsFolder = ghostsFolder
+
 	self.RunService.Heartbeat:Connect(function()
+		local now = tick()
+		local dt = now - self._hbLast
+		self._hbLast = now
+		self._ghostDt = dt
+
+		if self.ghostModel and now > self.ghostExpireAt then
+			self:ClearBacktrackGhost()
+		end
+
 		if self.BACKTRACK_GHOST_ENABLED and self.player.Character then
 			local hrp = self.player.Character:FindFirstChild("HumanoidRootPart")
 			if hrp then
-				local now = tick()
 				if now - lastSend > 0.05 then
 					lastSend = now
-					backtrackRemote:FireServer(false)
+					backtrackRemote:FireServer(self:IsFakeLagEnabledFallback())
 				end
 			end
 		end
@@ -791,6 +1088,19 @@ function VisualsModule:SetupBacktrackGhost()
 
 	backtrackRemote.OnClientEvent:Connect(function(cframe, isFakelag, ping)
 		if not self.BACKTRACK_GHOST_ENABLED then return end
+
+		if not isFakelag and ping then
+			local char = self.player.Character
+			if char then
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local velocity = hrp.AssemblyLinearVelocity
+					local pingOffset = velocity * (ping * 0.5)
+					cframe = hrp.CFrame - pingOffset
+				end
+			end
+		end
+
 		self:UpdateBacktrackGhostPose(cframe, isFakelag)
 	end)
 
@@ -801,12 +1111,6 @@ function VisualsModule:SetupBacktrackGhost()
 	self.player.CharacterRemoving:Connect(function()
 		self:ClearBacktrackGhost()
 	end)
-
-	self.RunService.Heartbeat:Connect(function()
-		if self.ghostModel and tick() > self.ghostExpireAt then
-			self:ClearBacktrackGhost()
-		end
-	end)
 end
 
 function VisualsModule:ClearBacktrackGhost()
@@ -814,46 +1118,10 @@ function VisualsModule:ClearBacktrackGhost()
 		self.ghostModel:Destroy()
 		self.ghostModel = nil
 		table.clear(self.ghostParts)
+		table.clear(self.ghostLastCFrames)
 	end
 	self.sourceCharacter = nil
-end
-
-function VisualsModule:UpdateBacktrackGhostPose(targetCFrame, isFakelag)
-	if not self.BACKTRACK_GHOST_ENABLED then return end
-
-	local srcChar = self.player.Character
-	if not srcChar then return end
-
-	local humanoid = srcChar:FindFirstChild("Humanoid")
-	if humanoid and humanoid.Health <= 0 then
-		self:ClearBacktrackGhost()
-		return
-	end
-
-	if not self.ghostModel or self.sourceCharacter ~= srcChar then
-		self:ClearBacktrackGhost()
-		self.ghostModel = self:CreateBacktrackGhost()
-		if self.ghostModel then
-			self.sourceCharacter = srcChar
-		else
-			return
-		end
-	end
-
-	local srcRoot = srcChar:FindFirstChild("HumanoidRootPart")
-	if not srcRoot then return end
-
-	local currentRootCFrame = srcRoot.CFrame
-	local offset = targetCFrame * currentRootCFrame:Inverse()
-
-	for _, ghostPart in ipairs(self.ghostParts) do
-		local srcPart = srcChar:FindFirstChild(ghostPart.Name, true)
-		if srcPart then
-			ghostPart.CFrame = offset * srcPart.CFrame
-		end
-	end
-
-	self.ghostExpireAt = tick() + self.BACKTRACK_GHOST_DURATION
+	self.lastFakeLagState = nil
 end
 
 function VisualsModule:CreateBacktrackGhost()
@@ -866,15 +1134,25 @@ function VisualsModule:CreateBacktrackGhost()
 	srcChar.Archivable = true
 	local ghost = srcChar:Clone()
 	srcChar.Archivable = false
-
 	if not ghost then return nil end
 
 	ghost.Name = self.player.Name .. "_BacktrackGhost"
 
 	for _, v in pairs(ghost:GetDescendants()) do
-		if v:IsA("Script") or v:IsA("LocalScript") or v:IsA("Sound") 
+		if v:IsA("Script") or v:IsA("LocalScript") or v:IsA("Sound")
 			or v:IsA("BillboardGui") or v:IsA("Humanoid")
-			or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Constraint") then
+			or v:IsA("AlignPosition") or v:IsA("AlignOrientation")
+			or v:IsA("BodyMover") or v:IsA("BodyGyro") or v:IsA("BodyVelocity")
+			or v:IsA("BodyPosition") or v:IsA("BodyForce") or v:IsA("VectorForce")
+			or v:IsA("LineForce") or v:IsA("Animator") then
+			v:Destroy()
+		end
+	end
+
+	for _, v in pairs(ghost:GetDescendants()) do
+		if v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("WeldConstraint")
+			or v:IsA("HingeConstraint") or v:IsA("BallSocketConstraint")
+			or v:IsA("Constraint") or v:IsA("JointInstance") then
 			v:Destroy()
 		end
 	end
@@ -912,16 +1190,56 @@ function VisualsModule:CreateBacktrackGhost()
 		end
 	end
 
-	local ghostsFolder = self.Workspace:FindFirstChild("BacktrackGhosts") or Instance.new("Folder", self.Workspace)
-	ghostsFolder.Name = "BacktrackGhosts"
-	ghost.Parent = ghostsFolder
-	
+	ghost.Parent = self._ghostsFolder
 	return ghost
 end
 
--- ============================================
--- POST PROCESSING EFFECTS
--- ============================================
+function VisualsModule:UpdateBacktrackGhostPose(targetCFrame, isFakelag)
+	if not self.BACKTRACK_GHOST_ENABLED then return end
+
+	local srcChar = self.player.Character
+	if not srcChar then return end
+
+	local humanoid = srcChar:FindFirstChild("Humanoid")
+	if humanoid and humanoid.Health <= 0 then
+		self:ClearBacktrackGhost()
+		return
+	end
+
+	if (not self.ghostModel) or (self.sourceCharacter ~= srcChar) or (self.lastFakeLagState ~= isFakelag) or (not self.ghostModel.Parent) then
+		self:ClearBacktrackGhost()
+		self.ghostModel = self:CreateBacktrackGhost()
+		if self.ghostModel then
+			self.sourceCharacter = srcChar
+			self.lastFakeLagState = isFakelag
+		else
+			return
+		end
+	end
+
+	local srcRoot = srcChar:FindFirstChild("HumanoidRootPart")
+	if not srcRoot then return end
+
+	local currentRootCFrame = srcRoot.CFrame
+	local offset = targetCFrame * currentRootCFrame:Inverse()
+
+	local dt = tonumber(self._ghostDt) or (1 / 60)
+	local alpha = math.clamp(self.GHOST_SMOOTH_SPEED * dt, 0, 1)
+
+	for _, ghostPart in ipairs(self.ghostParts) do
+		local srcPart = srcChar:FindFirstChild(ghostPart.Name, true)
+		if srcPart then
+			local targetCF = offset * srcPart.CFrame
+			local lastCF = self.ghostLastCFrames[ghostPart] or ghostPart.CFrame
+			local newCF = lastCF:Lerp(targetCF, alpha)
+			ghostPart.CFrame = newCF
+			self.ghostLastCFrames[ghostPart] = newCF
+		end
+	end
+
+	self.ghostExpireAt = tick() + self.BACKTRACK_GHOST_DURATION
+end
+
 function VisualsModule:SnapshotFirstEffect(className)
 	local inst = self.Lighting:FindFirstChildOfClass(className)
 	if not inst then return nil end
@@ -959,7 +1277,6 @@ function VisualsModule:ApplySingleEffect(className, enabled, applyFn)
 	end
 end
 
--- ATMOSPHERE
 function VisualsModule:UpdateAtmosphere()
 	self:ApplySingleEffect("Atmosphere", self.ATMOSPHERE_ENABLED, function(atmosphere)
 		atmosphere.Density = self.ATMOSPHERE_DENSITY
@@ -1006,7 +1323,6 @@ function VisualsModule:SetAtmosphereHaze(value)
 	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
 end
 
--- BLOOM
 function VisualsModule:UpdateBloom()
 	self:ApplySingleEffect("BloomEffect", self.BLOOM_ENABLED, function(bloom)
 		bloom.Enabled = true
@@ -1036,7 +1352,6 @@ function VisualsModule:SetBloomThreshold(value)
 	if self.BLOOM_ENABLED then self:UpdateBloom() end
 end
 
--- COLOR CORRECTION
 function VisualsModule:UpdateColorCorrection()
 	self:ApplySingleEffect("ColorCorrectionEffect", self.COLOR_CORRECTION_ENABLED, function(cc)
 		cc.Brightness = self.COLOR_CORRECTION_BRIGHTNESS
@@ -1071,9 +1386,6 @@ function VisualsModule:SetColorCorrectionTint(value)
 	if self.COLOR_CORRECTION_ENABLED then self:UpdateColorCorrection() end
 end
 
--- ============================================
--- SETTERS
--- ============================================
 function VisualsModule:SetHitlogEnabled(value)
 	self.HITLOG_ENABLED = value
 	if self.hitlogContainer then
@@ -1095,9 +1407,11 @@ end
 
 function VisualsModule:SetKeybindListVisible(value)
 	self.KeybindUI.Visible = value
+	self.KEYBIND_LIST_VISIBLE = value
 	if self.KeybindUI.Container then
 		self.KeybindUI.Container.Visible = value
 	end
+	self:UpdateKeybindDisplay()
 end
 
 function VisualsModule:SetTracerEnabled(value)
@@ -1128,6 +1442,18 @@ function VisualsModule:SetWallbangExitColor(value)
 	self.WALLBANG_EXIT_COLOR = value
 end
 
+function VisualsModule:SetWallbangMarkerSize(value)
+	if typeof(value) == "number" then
+		self.WALLBANG_MARKER_SIZE = Vector3.new(value, value, value)
+	elseif typeof(value) == "Vector3" then
+		self.WALLBANG_MARKER_SIZE = value
+	end
+end
+
+function VisualsModule:SetWallbangLifetime(value)
+	self.WALLBANG_LIFETIME = value
+end
+
 function VisualsModule:SetKillFXEnabled(value)
 	self.KILLFX_ENABLED = value
 end
@@ -1150,6 +1476,10 @@ end
 
 function VisualsModule:SetKillFXLightRange(value)
 	self.KILLFX_LIGHT_RANGE = value
+end
+
+function VisualsModule:SetKillFXLightBrightness(value)
+	self.KILLFX_LIGHT_BRIGHTNESS = value
 end
 
 function VisualsModule:SetOffscreenEnabled(value)
@@ -1180,43 +1510,60 @@ function VisualsModule:SetBacktrackGhostDuration(value)
 	self.BACKTRACK_GHOST_DURATION = value
 end
 
--- ============================================
--- CONFIG FUNCTIONS
--- ============================================
+function VisualsModule:SetKillImageEnabled(value)
+	self.KILLIMAGE_ENABLED = value
+end
+
+function VisualsModule:SetKillImageColor(value)
+	self.KILLIMAGE_COLOR = value
+end
+
+function VisualsModule:SetKillImageMaxAlpha(value)
+	self.KILLIMAGE_MAX_ALPHA = value
+end
+
 function VisualsModule:GetSettings()
 	local function colorToTable(c)
-		return {math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255)}
+		return { math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255) }
 	end
 
 	return {
 		HITLOG_ENABLED = self.HITLOG_ENABLED,
+		KEYBIND_LIST_VISIBLE = self.KeybindUI.Visible,
 		HITSOUND_ENABLED = self.HITSOUND_ENABLED,
 		HITSOUND_PRESET = self.HITSOUND_PRESET,
 		HITSOUND_VOLUME = self.HITSOUND_VOLUME,
-		KEYBIND_LIST_VISIBLE = self.KeybindUI.Visible,
-		TRACER_ENABLED = self.TRACER_ENABLED,
-		TRACER_COLOR = colorToTable(self.TRACER_COLOR),
-		TRACER_LIFETIME = self.TRACER_LIFETIME,
-		TRACER_WIDTH = self.TRACER_WIDTH,
+
+		OFFSCREEN_ENABLED = self.OFFSCREEN_ENABLED,
+		OFFSCREEN_COLOR = colorToTable(self.OFFSCREEN_COLOR),
+
 		WALLBANG_ENABLED = self.WALLBANG_ENABLED,
 		WALLBANG_ENTRY_COLOR = colorToTable(self.WALLBANG_ENTRY_COLOR),
 		WALLBANG_EXIT_COLOR = colorToTable(self.WALLBANG_EXIT_COLOR),
+		WALLBANG_MARKER_SIZE = self.WALLBANG_MARKER_SIZE.X,
+		WALLBANG_LIFETIME = self.WALLBANG_LIFETIME,
+
 		KILLFX_ENABLED = self.KILLFX_ENABLED,
 		KILLFX_TYPE = self.KILLFX_TYPE,
 		KILLFX_COLOR = colorToTable(self.KILLFX_COLOR),
 		KILLFX_LIGHT_COLOR = colorToTable(self.KILLFX_LIGHT_COLOR),
 		KILLFX_CUSTOM_DURATION = self.KILLFX_CUSTOM_DURATION,
 		KILLFX_LIGHT_RANGE = self.KILLFX_LIGHT_RANGE,
-		OFFSCREEN_ENABLED = self.OFFSCREEN_ENABLED,
-		OFFSCREEN_COLOR = colorToTable(self.OFFSCREEN_COLOR),
-		BACKTRACK_GHOST_ENABLED = self.BACKTRACK_GHOST_ENABLED,
-		BACKTRACK_GHOST_COLOR = colorToTable(self.BACKTRACK_GHOST_COLOR),
-		BACKTRACK_GHOST_DURATION = self.BACKTRACK_GHOST_DURATION,
+		KILLFX_LIGHT_BRIGHTNESS = self.KILLFX_LIGHT_BRIGHTNESS,
+
 		KILLIMAGE_ENABLED = self.KILLIMAGE_ENABLED,
 		KILLIMAGE_COLOR = colorToTable(self.KILLIMAGE_COLOR),
 		KILLIMAGE_MAX_ALPHA = self.KILLIMAGE_MAX_ALPHA,
-		
-		-- POST PROCESSING
+
+		BACKTRACK_GHOST_ENABLED = self.BACKTRACK_GHOST_ENABLED,
+		BACKTRACK_GHOST_COLOR = colorToTable(self.BACKTRACK_GHOST_COLOR),
+		BACKTRACK_GHOST_DURATION = self.BACKTRACK_GHOST_DURATION,
+
+		TRACER_ENABLED = self.TRACER_ENABLED,
+		TRACER_COLOR = colorToTable(self.TRACER_COLOR),
+		TRACER_LIFETIME = self.TRACER_LIFETIME,
+		TRACER_WIDTH = self.TRACER_WIDTH,
+
 		ATMOSPHERE_ENABLED = self.ATMOSPHERE_ENABLED,
 		ATMOSPHERE_DENSITY = self.ATMOSPHERE_DENSITY,
 		ATMOSPHERE_OFFSET = self.ATMOSPHERE_OFFSET,
@@ -1224,12 +1571,12 @@ function VisualsModule:GetSettings()
 		ATMOSPHERE_DECAY = colorToTable(self.ATMOSPHERE_DECAY),
 		ATMOSPHERE_GLARE = self.ATMOSPHERE_GLARE,
 		ATMOSPHERE_HAZE = self.ATMOSPHERE_HAZE,
-		
+
 		BLOOM_ENABLED = self.BLOOM_ENABLED,
 		BLOOM_INTENSITY = self.BLOOM_INTENSITY,
 		BLOOM_SIZE = self.BLOOM_SIZE,
 		BLOOM_THRESHOLD = self.BLOOM_THRESHOLD,
-		
+
 		COLOR_CORRECTION_ENABLED = self.COLOR_CORRECTION_ENABLED,
 		COLOR_CORRECTION_BRIGHTNESS = self.COLOR_CORRECTION_BRIGHTNESS,
 		COLOR_CORRECTION_CONTRAST = self.COLOR_CORRECTION_CONTRAST,
@@ -1249,33 +1596,41 @@ function VisualsModule:ApplySettings(settings)
 	end
 
 	if settings.HITLOG_ENABLED ~= nil then self:SetHitlogEnabled(settings.HITLOG_ENABLED) end
+	if settings.KEYBIND_LIST_VISIBLE ~= nil then self:SetKeybindListVisible(settings.KEYBIND_LIST_VISIBLE) end
 	if settings.HITSOUND_ENABLED ~= nil then self:SetHitSoundEnabled(settings.HITSOUND_ENABLED) end
 	if settings.HITSOUND_PRESET ~= nil then self:SetHitSoundPreset(settings.HITSOUND_PRESET) end
 	if settings.HITSOUND_VOLUME ~= nil then self:SetHitSoundVolume(settings.HITSOUND_VOLUME) end
-	if settings.KEYBIND_LIST_VISIBLE ~= nil then self:SetKeybindListVisible(settings.KEYBIND_LIST_VISIBLE) end
-	if settings.TRACER_ENABLED ~= nil then self:SetTracerEnabled(settings.TRACER_ENABLED) end
-	if settings.TRACER_COLOR then self:SetTracerColor(toColor3(settings.TRACER_COLOR) or self.TRACER_COLOR) end
-	if settings.TRACER_LIFETIME ~= nil then self:SetTracerLifetime(settings.TRACER_LIFETIME) end
-	if settings.TRACER_WIDTH ~= nil then self:SetTracerWidth(settings.TRACER_WIDTH) end
+
+	if settings.OFFSCREEN_ENABLED ~= nil then self:SetOffscreenEnabled(settings.OFFSCREEN_ENABLED) end
+	if settings.OFFSCREEN_COLOR then self:SetOffscreenColor(toColor3(settings.OFFSCREEN_COLOR) or self.OFFSCREEN_COLOR) end
+
 	if settings.WALLBANG_ENABLED ~= nil then self:SetWallbangEnabled(settings.WALLBANG_ENABLED) end
 	if settings.WALLBANG_ENTRY_COLOR then self:SetWallbangEntryColor(toColor3(settings.WALLBANG_ENTRY_COLOR) or self.WALLBANG_ENTRY_COLOR) end
 	if settings.WALLBANG_EXIT_COLOR then self:SetWallbangExitColor(toColor3(settings.WALLBANG_EXIT_COLOR) or self.WALLBANG_EXIT_COLOR) end
+	if settings.WALLBANG_MARKER_SIZE ~= nil then self:SetWallbangMarkerSize(settings.WALLBANG_MARKER_SIZE) end
+	if settings.WALLBANG_LIFETIME ~= nil then self:SetWallbangLifetime(settings.WALLBANG_LIFETIME) end
+
 	if settings.KILLFX_ENABLED ~= nil then self:SetKillFXEnabled(settings.KILLFX_ENABLED) end
 	if settings.KILLFX_TYPE ~= nil then self:SetKillFXType(settings.KILLFX_TYPE) end
 	if settings.KILLFX_COLOR then self:SetKillFXColor(toColor3(settings.KILLFX_COLOR) or self.KILLFX_COLOR) end
 	if settings.KILLFX_LIGHT_COLOR then self:SetKillFXLightColor(toColor3(settings.KILLFX_LIGHT_COLOR) or self.KILLFX_LIGHT_COLOR) end
 	if settings.KILLFX_CUSTOM_DURATION ~= nil then self:SetKillFXDuration(settings.KILLFX_CUSTOM_DURATION) end
 	if settings.KILLFX_LIGHT_RANGE ~= nil then self:SetKillFXLightRange(settings.KILLFX_LIGHT_RANGE) end
-	if settings.OFFSCREEN_ENABLED ~= nil then self:SetOffscreenEnabled(settings.OFFSCREEN_ENABLED) end
-	if settings.OFFSCREEN_COLOR then self:SetOffscreenColor(toColor3(settings.OFFSCREEN_COLOR) or self.OFFSCREEN_COLOR) end
+	if settings.KILLFX_LIGHT_BRIGHTNESS ~= nil then self:SetKillFXLightBrightness(settings.KILLFX_LIGHT_BRIGHTNESS) end
+
+	if settings.KILLIMAGE_ENABLED ~= nil then self:SetKillImageEnabled(settings.KILLIMAGE_ENABLED) end
+	if settings.KILLIMAGE_COLOR then self:SetKillImageColor(toColor3(settings.KILLIMAGE_COLOR) or self.KILLIMAGE_COLOR) end
+	if settings.KILLIMAGE_MAX_ALPHA ~= nil then self:SetKillImageMaxAlpha(settings.KILLIMAGE_MAX_ALPHA) end
+
 	if settings.BACKTRACK_GHOST_ENABLED ~= nil then self:SetBacktrackGhostEnabled(settings.BACKTRACK_GHOST_ENABLED) end
 	if settings.BACKTRACK_GHOST_COLOR then self:SetBacktrackGhostColor(toColor3(settings.BACKTRACK_GHOST_COLOR) or self.BACKTRACK_GHOST_COLOR) end
 	if settings.BACKTRACK_GHOST_DURATION ~= nil then self:SetBacktrackGhostDuration(settings.BACKTRACK_GHOST_DURATION) end
-	if settings.KILLIMAGE_ENABLED ~= nil then self.KILLIMAGE_ENABLED = settings.KILLIMAGE_ENABLED end
-	if settings.KILLIMAGE_COLOR then self.KILLIMAGE_COLOR = toColor3(settings.KILLIMAGE_COLOR) or self.KILLIMAGE_COLOR end
-	if settings.KILLIMAGE_MAX_ALPHA ~= nil then self.KILLIMAGE_MAX_ALPHA = settings.KILLIMAGE_MAX_ALPHA end
-	
-	-- POST PROCESSING
+
+	if settings.TRACER_ENABLED ~= nil then self:SetTracerEnabled(settings.TRACER_ENABLED) end
+	if settings.TRACER_COLOR then self:SetTracerColor(toColor3(settings.TRACER_COLOR) or self.TRACER_COLOR) end
+	if settings.TRACER_LIFETIME ~= nil then self:SetTracerLifetime(settings.TRACER_LIFETIME) end
+	if settings.TRACER_WIDTH ~= nil then self:SetTracerWidth(settings.TRACER_WIDTH) end
+
 	if settings.ATMOSPHERE_ENABLED ~= nil then self:SetAtmosphereEnabled(settings.ATMOSPHERE_ENABLED) end
 	if settings.ATMOSPHERE_DENSITY ~= nil then self:SetAtmosphereDensity(settings.ATMOSPHERE_DENSITY) end
 	if settings.ATMOSPHERE_OFFSET ~= nil then self:SetAtmosphereOffset(settings.ATMOSPHERE_OFFSET) end
@@ -1283,12 +1638,12 @@ function VisualsModule:ApplySettings(settings)
 	if settings.ATMOSPHERE_DECAY then self:SetAtmosphereDecay(toColor3(settings.ATMOSPHERE_DECAY) or self.ATMOSPHERE_DECAY) end
 	if settings.ATMOSPHERE_GLARE ~= nil then self:SetAtmosphereGlare(settings.ATMOSPHERE_GLARE) end
 	if settings.ATMOSPHERE_HAZE ~= nil then self:SetAtmosphereHaze(settings.ATMOSPHERE_HAZE) end
-	
+
 	if settings.BLOOM_ENABLED ~= nil then self:SetBloomEnabled(settings.BLOOM_ENABLED) end
 	if settings.BLOOM_INTENSITY ~= nil then self:SetBloomIntensity(settings.BLOOM_INTENSITY) end
 	if settings.BLOOM_SIZE ~= nil then self:SetBloomSize(settings.BLOOM_SIZE) end
 	if settings.BLOOM_THRESHOLD ~= nil then self:SetBloomThreshold(settings.BLOOM_THRESHOLD) end
-	
+
 	if settings.COLOR_CORRECTION_ENABLED ~= nil then self:SetColorCorrectionEnabled(settings.COLOR_CORRECTION_ENABLED) end
 	if settings.COLOR_CORRECTION_BRIGHTNESS ~= nil then self:SetColorCorrectionBrightness(settings.COLOR_CORRECTION_BRIGHTNESS) end
 	if settings.COLOR_CORRECTION_CONTRAST ~= nil then self:SetColorCorrectionContrast(settings.COLOR_CORRECTION_CONTRAST) end
@@ -1297,7 +1652,6 @@ function VisualsModule:ApplySettings(settings)
 end
 
 function VisualsModule:Start()
-	-- Module is ready
 end
 
 return VisualsModule
