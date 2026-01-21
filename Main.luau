@@ -13,7 +13,7 @@ local player = Players.LocalPlayer
 local guiParent = player:WaitForChild("PlayerGui")
 
 -- ============================================
--- Load modules
+-- Load modules!
 -- ============================================
 print("[NEMESIS] Loading Visuals module...")
 local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/Visuals.luau"))()
