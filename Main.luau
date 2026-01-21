@@ -20,7 +20,7 @@ local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com
 print("[NEMESIS] Visuals loaded")
 
 print("[NEMESIS] Loading ESP module...")
-local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/Esp.luau"))()
+local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/Esp.luau"))()
 print("[NEMESIS] ESP loaded")
 
 print("[NEMESIS] Loading World module...")
@@ -328,12 +328,14 @@ local function applySettings(settings)
 	if not settings then return end
 
 	Rage:ApplySettings(settings)
+	Visuals:ApplySettings(settings)
 	World:Import(settings)
 
 	if ESP then
 		ESP:ApplySettings(settings)
 	end
 
+	-- Apply watermark setting
 	if settings.WATERMARK_ENABLED ~= nil then
 		setWatermarkEnabled(settings.WATERMARK_ENABLED)
 	end
@@ -397,7 +399,7 @@ local function syncUIFromVars()
 		return
 	end
 	APPLYING_CONFIG = true
-	
+
 	-- Sync Rage UI
 	local rageSettings = Rage:GetSettings()
 	uiSet(UI.HitchanceToggle, rageSettings.RAGE_HITCHANCE_ENABLED)
@@ -422,7 +424,7 @@ local function syncUIFromVars()
 	uiSet(UI.CustomTime, ws.WORLD_TIME_ENABLED)
 	uiSet(UI.SkyPreset, ws.CUSTOM_SKY_PRESET)
 	uiSet(UI.CustomSky, ws.CUSTOM_SKY_ENABLED)
-	
+
 	-- Sync Visuals UI
 	local visualSettings = Visuals:GetSettings()
 	uiSet(UI.HitlogsToggle, visualSettings.HITLOG_ENABLED)
@@ -440,26 +442,26 @@ local function syncUIFromVars()
 	uiSet(UI.BacktrackGhostToggle, visualSettings.BACKTRACK_GHOST_ENABLED)
 	uiSet(UI.BacktrackGhostDuration, visualSettings.BACKTRACK_GHOST_DURATION)
 
-local esp = ESP:GetSettings()
-uiSet(UI.ESPEnabled, esp.ESP_ENABLED)
-uiSet(UI.SelfESP, esp.SELF_ESP)
-uiSet(UI.HealthESP, esp.HEALTH_ESP)
-uiSet(UI.DistanceESP, esp.DISTANCE_ESP)
-uiSet(UI.WeaponESP, esp.WEAPON_ESP)
-uiSet(UI.CornerBox, esp.CORNER_BOX)
-uiSet(UI.TracersESP, esp.TRACERS_ENABLED)
-uiSet(UI.SkeletonESP, esp.SKELETON_ENABLED)
-uiSet(UI.ChamsEnabled, esp.CHAMS_ENABLED)
-uiSet(UI.ChamsOutline, esp.CHAMS_OUTLINE)
-uiSet(UI.ChamsSolid, esp.CHAMS_SOLID)
-uiSet(UI.ChamsGlow, esp.CHAMS_GLOW)
-uiSet(UI.TeamCheck, esp.TEAM_CHECK)
-uiSet(UI.TeamHide, esp.TEAM_HIDE)
+	local esp = ESP:GetSettings()
+	uiSet(UI.ESPEnabled, esp.ESP_ENABLED)
+	uiSet(UI.SelfESP, esp.SELF_ESP)
+	uiSet(UI.HealthESP, esp.HEALTH_ESP)
+	uiSet(UI.DistanceESP, esp.DISTANCE_ESP)
+	uiSet(UI.WeaponESP, esp.WEAPON_ESP)
+	uiSet(UI.CornerBox, esp.CORNER_BOX)
+	uiSet(UI.TracersESP, esp.TRACERS_ENABLED)
+	uiSet(UI.SkeletonESP, esp.SKELETON_ENABLED)
+	uiSet(UI.ChamsEnabled, esp.CHAMS_ENABLED)
+	uiSet(UI.ChamsOutline, esp.CHAMS_OUTLINE)
+	uiSet(UI.ChamsSolid, esp.CHAMS_SOLID)
+	uiSet(UI.ChamsGlow, esp.CHAMS_GLOW)
+	uiSet(UI.TeamCheck, esp.TEAM_CHECK)
+	uiSet(UI.TeamHide, esp.TEAM_HIDE)
 
-	
+
 	-- Sync Watermark
 	uiSet(UI.WatermarkToggle, WatermarkEnabled)
-	
+
 	APPLYING_CONFIG = false
 	Visuals:UpdateKeybindDisplay()
 end
@@ -569,7 +571,7 @@ do
 		Position = 'right',
 		Name = "GENERAL"
 	})
-	
+
 	UI.HitchanceToggle = Weapon:AddToggle({
 		Name = "Hitchance",
 		Callback = function(value)
@@ -577,7 +579,7 @@ do
 			Rage:SetHitchanceEnabled(value)
 		end
 	})
-	
+
 	UI.HitchanceSlider = Weapon:AddSlider({
 		Name = "Hit-chance",
 		Type = "%",
@@ -589,7 +591,7 @@ do
 			Rage:SetHitchance(value)
 		end
 	})
-	
+
 	UI.MinDamageToggle = Weapon:AddToggle({
 		Name = "Min-damage",
 		Callback = function(value)
@@ -597,7 +599,7 @@ do
 			Rage:SetMinDamageEnabled(value)
 		end
 	})
-	
+
 	UI.MinDamageSlider = Weapon:AddSlider({
 		Name = "Min-damage value",
 		Type = " HP",
@@ -609,7 +611,7 @@ do
 			Rage:SetMinDamageValue(value)
 		end
 	})
-	
+
 	UI.HitboxesDropdown = Weapon:AddDropdown({
 		Name = "Hitboxes",
 		Values = {"Head", "Body", "Arms", "Legs"},
@@ -619,7 +621,7 @@ do
 			Rage:SetHitpart(value)
 		end
 	})
-	
+
 	UI.NoSpreadToggle = Extra:AddToggle({
 		Name = "No Spread (Airshot)",
 		Callback = function(value)
@@ -627,7 +629,7 @@ do
 			Rage:SetNoSpread(value)
 		end
 	})
-	
+
 	UI.AutoEquipToggle = Extra:AddToggle({
 		Name = "Auto Equip SSG",
 		Callback = function(value)
@@ -635,7 +637,7 @@ do
 			Rage:SetAutoEquipSSG(value)
 		end
 	})
-	
+
 	UI.MaxDistanceSlider = Extra:AddSlider({
 		Name = "Max Distance",
 		Type = " studs",
@@ -647,7 +649,7 @@ do
 			Rage:SetMaxDistance(value)
 		end
 	})
-	
+
 	UI.AimbotToggle = General:AddToggle({
 		Name = "Aimbot",
 		Risky = true,
@@ -656,7 +658,7 @@ do
 			Rage:SetEnabled(value)
 		end
 	})
-	
+
 	UI.AutoShootToggle = General:AddToggle({
 		Name = "Autoshoot",
 		Callback = function(value)
@@ -664,7 +666,7 @@ do
 			Rage:SetAutoShoot(value)
 		end
 	})
-	
+
 	UI.PredictionToggle = General:AddToggle({
 		Name = "Prediction",
 		Callback = function(value)
@@ -672,7 +674,7 @@ do
 			Rage:SetPredictionEnabled(value)
 		end
 	})
-	
+
 	UI.PredStrengthSlider = General:AddSlider({
 		Name = "Prediction Strength",
 		Type = "x",
@@ -685,7 +687,7 @@ do
 			Rage:SetPredictionStrength(value)
 		end
 	})
-	
+
 	General:AddButton({
 		Name = "Test Notification",
 		Callback = function()
@@ -1234,246 +1236,248 @@ do
 		end
 	})
 
-do
-	local Main = ESPTab:AddSection({
-		Name = "MAIN",
-		Position = "left"
-	})
+	do
+		local Main = ESPTab:AddSection({
+			Name = "MAIN",
+			Position = "left"
+		})
 
-	UI.ESPEnabled = Main:AddToggle({
-		Name = "Enable ESP",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetEnabled(v)
-		end
-	})
+		UI.ESPEnabled = Main:AddToggle({
+			Name = "Enable ESP",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetEnabled(v)
+			end
+		})
 
-	UI.SelfESP = Main:AddToggle({
-		Name = "Self ESP",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetSelfESP(v)
-		end
-	})
+		UI.SelfESP = Main:AddToggle({
+			Name = "Self ESP",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetSelfESP(v)
+			end
+		})
 
-	local Box = ESPTab:AddSection({
-		Name = "BOX",
+		local Box = ESPTab:AddSection({
+			Name = "BOX",
+			Position = "center"
+		})
+
+		UI.CornerBox = Box:AddToggle({
+			Name = "Corner Box",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetCornerBox(v)
+			end
+		})
+
+		UI.HealthESP = Box:AddToggle({
+			Name = "Health",
+			Default = true,
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetHealthESP(v)
+			end
+		})
+
+		UI.DistanceESP = Box:AddToggle({
+			Name = "Distance",
+			Default = true,
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetDistanceESP(v)
+			end
+		})
+
+		UI.WeaponESP = Box:AddToggle({
+			Name = "Weapon",
+			Default = true,
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetWeaponESP(v)
+			end
+		})
+
+		local Chams = ESPTab:AddSection({
+			Name = "CHAMS",
+			Position = "right"
+		})
+
+		UI.ChamsEnabled = Chams:AddToggle({
+			Name = "Enabled",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetChamsEnabled(v)
+			end
+		})
+
+		UI.ChamsOutline = Chams:AddToggle({
+			Name = "Outline",
+			Default = true,
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetChamsOutline(v)
+			end
+		})
+
+		UI.ChamsSolid = Chams:AddToggle({
+			Name = "Solid",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetChamsSolid(v)
+			end
+		})
+
+		UI.ChamsGlow = Chams:AddToggle({
+			Name = "Glow",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetChamsGlow(v)
+			end
+		})
+
+		local Extra = ESPTab:AddSection({
+			Name = "EXTRA",
+			Position = "left"
+		})
+
+		UI.TracersESP = Extra:AddToggle({
+			Name = "Tracers",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetTracersEnabled(v)
+			end
+		})
+
+		UI.SkeletonESP = Extra:AddToggle({
+			Name = "Skeleton",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetSkeletonEnabled(v)
+			end
+		})
+
+		UI.TeamCheck = Extra:AddToggle({
+			Name = "Team Check",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetTeamCheck(v)
+			end
+		})
+
+		UI.TeamHide = Extra:AddToggle({
+			Name = "Team Hide",
+			Callback = function(v)
+				if APPLYING_CONFIG then return end
+				ESP:SetTeamHide(v)
+			end
+		})
+	end
+
+	-- ============================================
+	-- Config Section
+	-- ============================================
+	local ConfigSection = MiscTab:AddSection({
+		Name = "CONFIG",
 		Position = "center"
 	})
 
-	UI.CornerBox = Box:AddToggle({
-		Name = "Corner Box",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetCornerBox(v)
-		end
-	})
-
-	UI.HealthESP = Box:AddToggle({
-		Name = "Health",
-		Default = true,
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetHealthESP(v)
-		end
-	})
-
-	UI.DistanceESP = Box:AddToggle({
-		Name = "Distance",
-		Default = true,
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetDistanceESP(v)
-		end
-	})
-
-	UI.WeaponESP = Box:AddToggle({
-		Name = "Weapon",
-		Default = true,
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetWeaponESP(v)
-		end
-	})
-
-	local Chams = ESPTab:AddSection({
-		Name = "CHAMS",
-		Position = "right"
-	})
-
-	UI.ChamsEnabled = Chams:AddToggle({
-		Name = "Enabled",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetChamsEnabled(v)
-		end
-	})
-
-	UI.ChamsOutline = Chams:AddToggle({
-		Name = "Outline",
-		Default = true,
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetChamsOutline(v)
-		end
-	})
-
-	UI.ChamsSolid = Chams:AddToggle({
-		Name = "Solid",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetChamsSolid(v)
-		end
-	})
-
-	UI.ChamsGlow = Chams:AddToggle({
-		Name = "Glow",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetChamsGlow(v)
-		end
-	})
-
-	local Extra = ESPTab:AddSection({
-		Name = "EXTRA",
-		Position = "left"
-	})
-
-	UI.TracersESP = Extra:AddToggle({
-		Name = "Tracers",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetTracersEnabled(v)
-		end
-	})
-
-	UI.SkeletonESP = Extra:AddToggle({
-		Name = "Skeleton",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetSkeletonEnabled(v)
-		end
-	})
-
-	UI.TeamCheck = Extra:AddToggle({
-		Name = "Team Check",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetTeamCheck(v)
-		end
-	})
-
-	UI.TeamHide = Extra:AddToggle({
-		Name = "Team Hide",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			ESP:SetTeamHide(v)
-		end
-	})
-end
-
--- ============================================
--- Config Section
--- ============================================
-local ConfigSection = MiscTab:AddSection({
-	Name = "CONFIG",
-	Position = "center"
-})
-
-local function sanitizeName(s)
-	s = tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")
-	s = s:gsub("[^%w%-%_]", "_")
-	if s == "" then s = "default" end
-	return s
-end
-
-local function pickDefaultConfig(list)
-	for i = 1, #list do
-		if list[i] ~= "No configs" then
-			return list[i]
-		end
+	local function sanitizeName(s)
+		s = tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")
+		s = s:gsub("[^%w%-%_]", "_")
+		if s == "" then s = "default" end
+		return s
 	end
-	return "default"
-end
 
-local function genNewConfigName()
-	return sanitizeName("cfg_" .. tostring(os.time()))
-end
+	local function pickDefaultConfig(list)
+		for i = 1, #list do
+			if list[i] ~= "No configs" then
+				return list[i]
+			end
+		end
+		return "default"
+	end
 
-local list = getConfigList()
-currentConfigName = sanitizeName(currentConfigName or pickDefaultConfig(list))
+	local function genNewConfigName()
+		return sanitizeName("cfg_" .. tostring(os.time()))
+	end
 
-ConfigSection:AddDropdown({
-	Name = "Select Config",
-	Values = list,
-	Default = currentConfigName,
-	Callback = function(value)
-		if value and value ~= "No configs" then
-			currentConfigName = sanitizeName(value)
+	local list = getConfigList()
+	currentConfigName = sanitizeName(currentConfigName or pickDefaultConfig(list))
+
+	ConfigSection:AddDropdown({
+		Name = "Select Config",
+		Values = list,
+		Default = currentConfigName,
+		Callback = function(value)
+			if value and value ~= "No configs" then
+				currentConfigName = sanitizeName(value)
+				Notification:Notify({
+					Title = "Config",
+					Content = "Selected: " .. currentConfigName,
+					Icon = "check",
+					Duration = 2
+				})
+			end
+		end
+	})
+
+	ConfigSection:AddButton({
+		Name = "New Config (Auto)",
+		Callback = function()
+			currentConfigName = genNewConfigName()
 			Notification:Notify({
 				Title = "Config",
-				Content = "Selected: " .. currentConfigName,
-				Icon = "check",
-				Duration = 2
+				Content = "New name: " .. currentConfigName .. " (save it)",
+				Icon = "info",
+				Duration = 3
 			})
 		end
-	end
-})
+	})
 
-ConfigSection:AddButton({
-	Name = "New Config (Auto)",
-	Callback = function()
-		currentConfigName = genNewConfigName()
-		Notification:Notify({
-			Title = "Config",
-			Content = "New name: " .. currentConfigName .. " (save it)",
-			Icon = "info",
-			Duration = 3
-		})
-	end
-})
+	ConfigSection:AddButton({
+		Name = "Save Config",
+		Callback = function()
+			currentConfigName = sanitizeName(currentConfigName)
+			saveConfig(currentConfigName)
+		end
+	})
 
-ConfigSection:AddButton({
-	Name = "Save Config",
-	Callback = function()
-		currentConfigName = sanitizeName(currentConfigName)
-		saveConfig(currentConfigName)
-	end
-})
+	ConfigSection:AddButton({
+		Name = "Load Config",
+		Callback = function()
+			currentConfigName = sanitizeName(currentConfigName)
+			loadConfig(currentConfigName)
+		end
+	})
 
-ConfigSection:AddButton({
-	Name = "Load Config",
-	Callback = function()
-		currentConfigName = sanitizeName(currentConfigName)
-		loadConfig(currentConfigName)
-	end
-})
+	ConfigSection:AddButton({
+		Name = "Delete Config",
+		Callback = function()
+			currentConfigName = sanitizeName(currentConfigName)
+			deleteConfig(currentConfigName)
+		end
+	})
 
-ConfigSection:AddButton({
-	Name = "Delete Config",
-	Callback = function()
-		currentConfigName = sanitizeName(currentConfigName)
-		deleteConfig(currentConfigName)
-	end
-})
+	ConfigSection:AddButton({
+		Name = "Refresh List",
+		Callback = function()
+			Notification:Notify({
+				Title = "Configs",
+				Content = "Re-open menu to refresh list",
+				Icon = "refresh-cw",
+				Duration = 3
+			})
+		end
+	})
 
-ConfigSection:AddButton({
-	Name = "Refresh List",
-	Callback = function()
-		Notification:Notify({
-			Title = "Configs",
-			Content = "Re-open menu to refresh list",
-			Icon = "refresh-cw",
-			Duration = 3
-		})
-	end
-})
+	-- ============================================
+	-- Start Modules
+	-- ============================================
+	Rage:Start()
+	Visuals:Start()
 
--- ============================================
--- Start Modules
--- ============================================
-Rage:Start()
-Visuals:Start()
+	syncUIFromVars()
+end
 
-syncUIFromVars()
-print("Nemesis Loaded")
+	print("Nemesis Loaded")
