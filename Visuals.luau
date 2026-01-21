@@ -55,6 +55,26 @@ function VisualsModule.new(config)
 	self.KILLIMAGE_COLOR = Color3.fromRGB(80, 160, 255)
 	self.KILLIMAGE_MAX_ALPHA = 0.45
 	
+	-- POST PROCESSING SETTINGS
+	self.ATMOSPHERE_ENABLED = false
+	self.ATMOSPHERE_DENSITY = 0.3
+	self.ATMOSPHERE_OFFSET = 0.25
+	self.ATMOSPHERE_COLOR = Color3.fromRGB(200, 200, 200)
+	self.ATMOSPHERE_DECAY = Color3.fromRGB(128, 128, 128)
+	self.ATMOSPHERE_GLARE = 0.5
+	self.ATMOSPHERE_HAZE = 0.5
+
+	self.BLOOM_ENABLED = false
+	self.BLOOM_INTENSITY = 2
+	self.BLOOM_SIZE = 56
+	self.BLOOM_THRESHOLD = 0.8
+
+	self.COLOR_CORRECTION_ENABLED = false
+	self.COLOR_CORRECTION_BRIGHTNESS = 0
+	self.COLOR_CORRECTION_CONTRAST = 0
+	self.COLOR_CORRECTION_SATURATION = 0
+	self.COLOR_CORRECTION_TINT = Color3.fromRGB(255, 255, 255)
+	
 	-- Internal state
 	self.tracerPool = {}
 	self.MAX_TRACER_POOL = 12
@@ -75,6 +95,13 @@ function VisualsModule:Initialize()
 	self.Camera = self.Workspace.CurrentCamera
 	self.FX_ROOT = self.ReplicatedStorage:WaitForChild("FXTemplates")
 	self.HITSOUND_STORAGE = self.guiParent:WaitForChild("ScreenGui"):WaitForChild("storage")
+	
+	-- BACKUP ORIGINAL EFFECTS
+	self.ORIGINAL_EFFECTS = {
+		Atmosphere = self:SnapshotFirstEffect("Atmosphere"),
+		BloomEffect = self:SnapshotFirstEffect("BloomEffect"),
+		ColorCorrectionEffect = self:SnapshotFirstEffect("ColorCorrectionEffect"),
+	}
 	
 	self:CreateHitlogUI()
 	self:CreateKeybindUI()
@@ -893,6 +920,158 @@ function VisualsModule:CreateBacktrackGhost()
 end
 
 -- ============================================
+-- POST PROCESSING EFFECTS
+-- ============================================
+function VisualsModule:SnapshotFirstEffect(className)
+	local inst = self.Lighting:FindFirstChildOfClass(className)
+	if not inst then return nil end
+	local c = inst:Clone()
+	c.Name = "NemesisOriginal_" .. className
+	return c
+end
+
+function VisualsModule:WipeClass(className)
+	for _, inst in ipairs(self.Lighting:GetDescendants()) do
+		if inst.ClassName == className then
+			inst:Destroy()
+		end
+	end
+	for _, inst in ipairs(self.Lighting:GetChildren()) do
+		if inst.ClassName == className then
+			inst:Destroy()
+		end
+	end
+end
+
+function VisualsModule:ApplySingleEffect(className, enabled, applyFn)
+	if enabled then
+		self:WipeClass(className)
+		local fx = Instance.new(className)
+		fx.Name = "Nemesis_" .. className
+		fx.Parent = self.Lighting
+		applyFn(fx)
+	else
+		self:WipeClass(className)
+		local original = self.ORIGINAL_EFFECTS[className]
+		if original then
+			original:Clone().Parent = self.Lighting
+		end
+	end
+end
+
+-- ATMOSPHERE
+function VisualsModule:UpdateAtmosphere()
+	self:ApplySingleEffect("Atmosphere", self.ATMOSPHERE_ENABLED, function(atmosphere)
+		atmosphere.Density = self.ATMOSPHERE_DENSITY
+		atmosphere.Offset = self.ATMOSPHERE_OFFSET
+		atmosphere.Color = self.ATMOSPHERE_COLOR
+		atmosphere.Decay = self.ATMOSPHERE_DECAY
+		atmosphere.Glare = self.ATMOSPHERE_GLARE
+		atmosphere.Haze = self.ATMOSPHERE_HAZE
+	end)
+end
+
+function VisualsModule:SetAtmosphereEnabled(value)
+	self.ATMOSPHERE_ENABLED = value
+	self:UpdateAtmosphere()
+end
+
+function VisualsModule:SetAtmosphereDensity(value)
+	self.ATMOSPHERE_DENSITY = value
+	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
+end
+
+function VisualsModule:SetAtmosphereOffset(value)
+	self.ATMOSPHERE_OFFSET = value
+	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
+end
+
+function VisualsModule:SetAtmosphereColor(value)
+	self.ATMOSPHERE_COLOR = value
+	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
+end
+
+function VisualsModule:SetAtmosphereDecay(value)
+	self.ATMOSPHERE_DECAY = value
+	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
+end
+
+function VisualsModule:SetAtmosphereGlare(value)
+	self.ATMOSPHERE_GLARE = value
+	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
+end
+
+function VisualsModule:SetAtmosphereHaze(value)
+	self.ATMOSPHERE_HAZE = value
+	if self.ATMOSPHERE_ENABLED then self:UpdateAtmosphere() end
+end
+
+-- BLOOM
+function VisualsModule:UpdateBloom()
+	self:ApplySingleEffect("BloomEffect", self.BLOOM_ENABLED, function(bloom)
+		bloom.Enabled = true
+		bloom.Intensity = self.BLOOM_INTENSITY
+		bloom.Size = self.BLOOM_SIZE
+		bloom.Threshold = self.BLOOM_THRESHOLD
+	end)
+end
+
+function VisualsModule:SetBloomEnabled(value)
+	self.BLOOM_ENABLED = value
+	self:UpdateBloom()
+end
+
+function VisualsModule:SetBloomIntensity(value)
+	self.BLOOM_INTENSITY = value
+	if self.BLOOM_ENABLED then self:UpdateBloom() end
+end
+
+function VisualsModule:SetBloomSize(value)
+	self.BLOOM_SIZE = value
+	if self.BLOOM_ENABLED then self:UpdateBloom() end
+end
+
+function VisualsModule:SetBloomThreshold(value)
+	self.BLOOM_THRESHOLD = value
+	if self.BLOOM_ENABLED then self:UpdateBloom() end
+end
+
+-- COLOR CORRECTION
+function VisualsModule:UpdateColorCorrection()
+	self:ApplySingleEffect("ColorCorrectionEffect", self.COLOR_CORRECTION_ENABLED, function(cc)
+		cc.Brightness = self.COLOR_CORRECTION_BRIGHTNESS
+		cc.Contrast = self.COLOR_CORRECTION_CONTRAST
+		cc.Saturation = self.COLOR_CORRECTION_SATURATION
+		cc.TintColor = self.COLOR_CORRECTION_TINT
+	end)
+end
+
+function VisualsModule:SetColorCorrectionEnabled(value)
+	self.COLOR_CORRECTION_ENABLED = value
+	self:UpdateColorCorrection()
+end
+
+function VisualsModule:SetColorCorrectionBrightness(value)
+	self.COLOR_CORRECTION_BRIGHTNESS = value
+	if self.COLOR_CORRECTION_ENABLED then self:UpdateColorCorrection() end
+end
+
+function VisualsModule:SetColorCorrectionContrast(value)
+	self.COLOR_CORRECTION_CONTRAST = value
+	if self.COLOR_CORRECTION_ENABLED then self:UpdateColorCorrection() end
+end
+
+function VisualsModule:SetColorCorrectionSaturation(value)
+	self.COLOR_CORRECTION_SATURATION = value
+	if self.COLOR_CORRECTION_ENABLED then self:UpdateColorCorrection() end
+end
+
+function VisualsModule:SetColorCorrectionTint(value)
+	self.COLOR_CORRECTION_TINT = value
+	if self.COLOR_CORRECTION_ENABLED then self:UpdateColorCorrection() end
+end
+
+-- ============================================
 -- SETTERS
 -- ============================================
 function VisualsModule:SetHitlogEnabled(value)
@@ -1036,6 +1215,26 @@ function VisualsModule:GetSettings()
 		KILLIMAGE_ENABLED = self.KILLIMAGE_ENABLED,
 		KILLIMAGE_COLOR = colorToTable(self.KILLIMAGE_COLOR),
 		KILLIMAGE_MAX_ALPHA = self.KILLIMAGE_MAX_ALPHA,
+		
+		-- POST PROCESSING
+		ATMOSPHERE_ENABLED = self.ATMOSPHERE_ENABLED,
+		ATMOSPHERE_DENSITY = self.ATMOSPHERE_DENSITY,
+		ATMOSPHERE_OFFSET = self.ATMOSPHERE_OFFSET,
+		ATMOSPHERE_COLOR = colorToTable(self.ATMOSPHERE_COLOR),
+		ATMOSPHERE_DECAY = colorToTable(self.ATMOSPHERE_DECAY),
+		ATMOSPHERE_GLARE = self.ATMOSPHERE_GLARE,
+		ATMOSPHERE_HAZE = self.ATMOSPHERE_HAZE,
+		
+		BLOOM_ENABLED = self.BLOOM_ENABLED,
+		BLOOM_INTENSITY = self.BLOOM_INTENSITY,
+		BLOOM_SIZE = self.BLOOM_SIZE,
+		BLOOM_THRESHOLD = self.BLOOM_THRESHOLD,
+		
+		COLOR_CORRECTION_ENABLED = self.COLOR_CORRECTION_ENABLED,
+		COLOR_CORRECTION_BRIGHTNESS = self.COLOR_CORRECTION_BRIGHTNESS,
+		COLOR_CORRECTION_CONTRAST = self.COLOR_CORRECTION_CONTRAST,
+		COLOR_CORRECTION_SATURATION = self.COLOR_CORRECTION_SATURATION,
+		COLOR_CORRECTION_TINT = colorToTable(self.COLOR_CORRECTION_TINT),
 	}
 end
 
@@ -1075,6 +1274,26 @@ function VisualsModule:ApplySettings(settings)
 	if settings.KILLIMAGE_ENABLED ~= nil then self.KILLIMAGE_ENABLED = settings.KILLIMAGE_ENABLED end
 	if settings.KILLIMAGE_COLOR then self.KILLIMAGE_COLOR = toColor3(settings.KILLIMAGE_COLOR) or self.KILLIMAGE_COLOR end
 	if settings.KILLIMAGE_MAX_ALPHA ~= nil then self.KILLIMAGE_MAX_ALPHA = settings.KILLIMAGE_MAX_ALPHA end
+	
+	-- POST PROCESSING
+	if settings.ATMOSPHERE_ENABLED ~= nil then self:SetAtmosphereEnabled(settings.ATMOSPHERE_ENABLED) end
+	if settings.ATMOSPHERE_DENSITY ~= nil then self:SetAtmosphereDensity(settings.ATMOSPHERE_DENSITY) end
+	if settings.ATMOSPHERE_OFFSET ~= nil then self:SetAtmosphereOffset(settings.ATMOSPHERE_OFFSET) end
+	if settings.ATMOSPHERE_COLOR then self:SetAtmosphereColor(toColor3(settings.ATMOSPHERE_COLOR) or self.ATMOSPHERE_COLOR) end
+	if settings.ATMOSPHERE_DECAY then self:SetAtmosphereDecay(toColor3(settings.ATMOSPHERE_DECAY) or self.ATMOSPHERE_DECAY) end
+	if settings.ATMOSPHERE_GLARE ~= nil then self:SetAtmosphereGlare(settings.ATMOSPHERE_GLARE) end
+	if settings.ATMOSPHERE_HAZE ~= nil then self:SetAtmosphereHaze(settings.ATMOSPHERE_HAZE) end
+	
+	if settings.BLOOM_ENABLED ~= nil then self:SetBloomEnabled(settings.BLOOM_ENABLED) end
+	if settings.BLOOM_INTENSITY ~= nil then self:SetBloomIntensity(settings.BLOOM_INTENSITY) end
+	if settings.BLOOM_SIZE ~= nil then self:SetBloomSize(settings.BLOOM_SIZE) end
+	if settings.BLOOM_THRESHOLD ~= nil then self:SetBloomThreshold(settings.BLOOM_THRESHOLD) end
+	
+	if settings.COLOR_CORRECTION_ENABLED ~= nil then self:SetColorCorrectionEnabled(settings.COLOR_CORRECTION_ENABLED) end
+	if settings.COLOR_CORRECTION_BRIGHTNESS ~= nil then self:SetColorCorrectionBrightness(settings.COLOR_CORRECTION_BRIGHTNESS) end
+	if settings.COLOR_CORRECTION_CONTRAST ~= nil then self:SetColorCorrectionContrast(settings.COLOR_CORRECTION_CONTRAST) end
+	if settings.COLOR_CORRECTION_SATURATION ~= nil then self:SetColorCorrectionSaturation(settings.COLOR_CORRECTION_SATURATION) end
+	if settings.COLOR_CORRECTION_TINT then self:SetColorCorrectionTint(toColor3(settings.COLOR_CORRECTION_TINT) or self.COLOR_CORRECTION_TINT) end
 end
 
 function VisualsModule:Start()
