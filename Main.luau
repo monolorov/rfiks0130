@@ -47,107 +47,126 @@ Notification:Notify({
 -- ============================================
 local WatermarkEnabled = true
 local startTime = tick()
-local Stats = game:GetService("Stats")
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+local fps = 0
+local frames = 0
+local lastFpsUpdate = tick()
+
+RunService.RenderStepped:Connect(function()
+	frames += 1
+	local now = tick()
+	if now - lastFpsUpdate >= 1 then
+		fps = frames
+		frames = 0
+		lastFpsUpdate = now
+	end
+end)
 
 local WatermarkGui = Instance.new("ScreenGui")
 WatermarkGui.Name = "NemesisWatermark"
 WatermarkGui.ResetOnSpawn = false
-WatermarkGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 WatermarkGui.IgnoreGuiInset = true
-WatermarkGui.Parent = guiParent
+WatermarkGui.Parent = player:WaitForChild("PlayerGui")
 
-local WatermarkFrame = Instance.new("Frame")
-WatermarkFrame.Name = "WatermarkFrame"
-WatermarkFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-WatermarkFrame.BackgroundTransparency = 0.2
-WatermarkFrame.BorderSizePixel = 0
-WatermarkFrame.Position = UDim2.new(0, 10, 0, 10)
-WatermarkFrame.Size = UDim2.new(0, 350, 0, 32)
-WatermarkFrame.Parent = WatermarkGui
+local Frame = Instance.new("Frame")
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Frame.BorderSizePixel = 0
+Frame.Size = UDim2.new(0, 300, 0, 34)
+Frame.AnchorPoint = Vector2.new(1, 0)
+Frame.Position = UDim2.new(1, -12, 0, 40)
+Frame.Parent = WatermarkGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 6)
-UICorner.Parent = WatermarkFrame
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 6)
+Corner.Parent = Frame
 
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(255, 100, 220)
-UIStroke.Thickness = 1.5
-UIStroke.Transparency = 0.2
-UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-UIStroke.Parent = WatermarkFrame
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = Color3.fromRGB(255, 46, 46)
+Stroke.Thickness = 1.5
+Stroke.Parent = Frame
 
-local WatermarkLabel = Instance.new("TextLabel")
-WatermarkLabel.Name = "WatermarkText"
-WatermarkLabel.BackgroundTransparency = 1
-WatermarkLabel.Size = UDim2.new(1, -16, 1, 0)
-WatermarkLabel.Position = UDim2.new(0, 12, 0, 0)
-WatermarkLabel.Font = Enum.Font.GothamBold
-WatermarkLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-WatermarkLabel.TextSize = 13
-WatermarkLabel.TextXAlignment = Enum.TextXAlignment.Left
-WatermarkLabel.TextYAlignment = Enum.TextYAlignment.Center
-WatermarkLabel.TextStrokeTransparency = 0.8
-WatermarkLabel.Parent = WatermarkFrame
+local Glow = Instance.new("ImageLabel")
+Glow.BackgroundTransparency = 1
+Glow.Image = "rbxassetid://11509756389"
+Glow.ScaleType = Enum.ScaleType.Slice
+Glow.SliceCenter = Rect.new(40, 40, 260, 260)
+Glow.ImageColor3 = Color3.fromRGB(255, 46, 46)
+Glow.Size = UDim2.new(1, 24, 1, 24)
+Glow.Position = UDim2.new(0.5, 0, 0.5, 0)
+Glow.AnchorPoint = Vector2.new(0.5, 0.5)
+Glow.ZIndex = 0
+Glow.Parent = Frame
 
--- Format time function
-local function formatTime(seconds)
-	local hours = math.floor(seconds / 3600)
-	local minutes = math.floor((seconds % 3600) / 60)
-	local secs = math.floor(seconds % 60)
-	return string.format("%02d:%02d:%02d", hours, minutes, secs)
+local Text = Instance.new("TextLabel")
+Text.BackgroundTransparency = 1
+Text.Size = UDim2.new(1, -20, 1, 0)
+Text.Position = UDim2.new(0, 10, 0, 0)
+Text.Font = Enum.Font.GothamBold
+Text.TextSize = 13
+Text.TextXAlignment = Enum.TextXAlignment.Left
+Text.TextYAlignment = Enum.TextYAlignment.Center
+Text.TextColor3 = Color3.new(1,1,1)
+Text.ZIndex = 1
+Text.Parent = Frame
+
+local Gradient = Instance.new("UIGradient")
+Gradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 46, 46)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(194, 21, 21)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(158, 40, 40))
+})
+Gradient.Parent = Text
+
+local gradientTween = TweenService:Create(
+	Gradient,
+	TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+	{Offset = Vector2.new(1, 0)}
+)
+gradientTween:Play()
+
+local function formatTime(sec)
+	local h = math.floor(sec / 3600)
+	local m = math.floor((sec % 3600) / 60)
+	local s = math.floor(sec % 60)
+	return string.format("%02d:%02d:%02d", h, m, s)
 end
 
--- Update watermark
-local watermarkConnection
-local function updateWatermark()
+local function update()
 	if not WatermarkEnabled then
-		WatermarkFrame.Visible = false
+		Frame.Visible = false
 		return
 	end
-	
-	WatermarkFrame.Visible = true
-	
-	local elapsedTime = tick() - startTime
-	local fps = math.floor(workspace:GetRealPhysicsFPS())
-	
-	-- Get ping (ms)
-	local ping = 0
-	pcall(function()
-		ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-	end)
-	
-	-- Build watermark text with separators
+
+	Frame.Visible = true
+
 	local text = string.format(
-		"NEMESIS  |  %s  |  %s  |  %d FPS  |  %d ms",
+		"NEMESIS  |  %s  |  %s  |  %d FPS",
 		player.Name,
-		formatTime(elapsedTime),
-		fps,
-		ping
+		formatTime(tick() - startTime),
+		fps
 	)
-	
-	WatermarkLabel.Text = text
-	
-	-- Auto-resize frame to fit text
-	local textSize = game:GetService("TextService"):GetTextSize(
+
+	Text.Text = text
+
+	local size = TextService:GetTextSize(
 		text,
-		WatermarkLabel.TextSize,
-		WatermarkLabel.Font,
-		Vector2.new(math.huge, WatermarkLabel.AbsoluteSize.Y)
+		Text.TextSize,
+		Text.Font,
+		Vector2.new(math.huge, 34)
 	)
-	WatermarkFrame.Size = UDim2.new(0, textSize.X + 24, 0, 32)
+
+	Frame.Size = UDim2.new(0, size.X + 32, 0, 34)
 end
 
--- Start watermark update loop
-watermarkConnection = RunService.RenderStepped:Connect(updateWatermark)
-
--- Function to toggle watermark
-local function setWatermarkEnabled(enabled)
-	WatermarkEnabled = enabled
-	updateWatermark()
-end
-
--- Initial update
-updateWatermark()
+RunService.RenderStepped:Connect(update)
+update()
 
 -- ============================================
 -- Variables and Flags
