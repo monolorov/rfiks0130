@@ -494,8 +494,8 @@ end
 -- Fatality Window Setup
 -- ============================================
 local Window = Fatality.new({
-	Name = "Nemesis",
-	Expire = "never",
+	Name = "NEMESIS",
+	Expire = "N/A",
 })
 
 local RageTab = Window:AddMenu({
