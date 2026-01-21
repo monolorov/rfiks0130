@@ -16,11 +16,15 @@ local guiParent = player:WaitForChild("PlayerGui")
 -- Load modules
 -- ============================================
 print("[NEMESIS] Loading Visuals module...")
-local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/Visuals.luau"))()
+local VisualsModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/Visuals.luau"))()
 print("[NEMESIS] Visuals loaded")
 
+print("[NEMESIS] Loading World module...")
+local WorldModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/World.luau"))()
+print("[NEMESIS] World loaded")
+
 print("[NEMESIS] Loading Rage module...")
-local RageModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/Nemesis/refs/heads/main/Rage.luau"))()
+local RageModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/monolorov/rfiks0130/refs/heads/main/Rage.luau"))()
 print("[NEMESIS] Rage loaded")
 
 -- ============================================
@@ -147,6 +151,8 @@ local Rage = RageModule.new({
 	Visuals = Visuals -- Pass visuals for tracer creation
 })
 
+local World = WorldModule.new()
+
 -- ============================================
 -- CONFIG FUNCTIONS
 -- ============================================
@@ -166,6 +172,11 @@ local function getAllSettings()
 	for k, v in pairs(visualSettings) do
 		settings[k] = v
 	end
+
+local worldSettings = World:Export()
+for k, v in pairs(worldSettings) do
+	settings[k] = v
+end
 	
 	return settings
 end
@@ -178,6 +189,9 @@ local function applySettings(settings)
 	
 	-- Apply to Visuals
 	Visuals:ApplySettings(settings)
+
+World:Import(settings)
+
 end
 
 local function saveConfig(configName)
@@ -253,6 +267,16 @@ local function syncUIFromVars()
 	uiSet(UI.AutoShootToggle, rageSettings.RAGE_AUTOSHOOT)
 	uiSet(UI.PredictionToggle, rageSettings.PREDICTION_ENABLED)
 	uiSet(UI.PredStrengthSlider, rageSettings.PREDICTION_STRENGTH)
+
+local ws = World:Export()
+
+uiSet(UI.CustomLighting, ws.LIGHTING_EDIT_ENABLED)
+uiSet(UI.WorldBrightness, ws.CUSTOM_BRIGHTNESS)
+uiSet(UI.TimePreset, ws.TIME_PRESET)
+uiSet(UI.ClockTime, ws.CUSTOM_CLOCKTIME)
+uiSet(UI.CustomTime, ws.WORLD_TIME_ENABLED)
+uiSet(UI.SkyPreset, ws.CUSTOM_SKY_PRESET)
+uiSet(UI.CustomSky, ws.CUSTOM_SKY_ENABLED)
 	
 	-- Sync Visuals UI
 	local visualSettings = Visuals:GetSettings()
@@ -578,6 +602,97 @@ do
 			Visuals:SetOffscreenColor(c)
 		end
 	})
+
+local WorldSec = VisualTab:AddSection({
+	Name = "WORLD",
+	Position = "right"
+})
+
+UI.CustomLighting = WorldSec:AddToggle({
+	Name = "Custom Lighting",
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetLightingEnabled(v)
+	end
+})
+
+UI.WorldBrightness = WorldSec:AddSlider({
+	Name = "Brightness",
+	Min = 0,
+	Max = 10,
+	Default = Lighting.Brightness,
+	Round = 2,
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetBrightness(v)
+	end
+})
+
+UI.WorldAmbient = WorldSec:AddColorPicker({
+	Name = "Ambient",
+	Default = Lighting.Ambient,
+	Callback = function(c)
+		if APPLYING_CONFIG then return end
+		World:SetAmbient(c)
+	end
+})
+
+UI.WorldOutdoorAmbient = WorldSec:AddColorPicker({
+	Name = "OutdoorAmbient",
+	Default = Lighting.OutdoorAmbient,
+	Callback = function(c)
+		if APPLYING_CONFIG then return end
+		World:SetOutdoorAmbient(c)
+	end
+})
+
+UI.TimePreset = WorldSec:AddDropdown({
+	Name = "Time Preset",
+	Values = {"Default", "Day", "Sunset", "Night"},
+	Default = "Default",
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetTimePreset(v)
+	end
+})
+
+UI.ClockTime = WorldSec:AddSlider({
+	Name = "ClockTime",
+	Min = 0,
+	Max = 24,
+	Default = Lighting.ClockTime,
+	Round = 2,
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetClockTime(v)
+	end
+})
+
+UI.CustomTime = WorldSec:AddToggle({
+	Name = "Custom Time",
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetTimeEnabled(v)
+	end
+})
+
+UI.SkyPreset = WorldSec:AddDropdown({
+	Name = "Sky Preset",
+	Values = {"Original", "Blue"},
+	Default = "Original",
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetSkyPreset(v)
+	end
+})
+
+UI.CustomSky = WorldSec:AddToggle({
+	Name = "Custom Sky",
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetSkyEnabled(v)
+	end
+})
 
 	local KillFX = VisualTab:AddSection({
 		Name = "KILL EFFECTS",
