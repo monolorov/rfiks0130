@@ -877,15 +877,16 @@ do
 		end
 	})
 
-	UI.SkyPreset = WorldSec:AddDropdown({
-		Name = "Sky Preset",
-		Values = {"Original", "Blue"},
-		Default = "Original",
-		Callback = function(v)
-			if APPLYING_CONFIG then return end
-			World:SetSkyPreset(v)
-		end
-	})
+UI.SkyPreset = WorldSec:AddDropdown({
+	Name = "Sky Preset",
+	Values = {"Original", "Blue", "Gray", "Dark", "Green", "Pink", "Orange"},
+	Default = "Original",
+	Callback = function(v)
+		if APPLYING_CONFIG then return end
+		World:SetSkyPreset(v)
+	end
+})
+
 
 	UI.CustomSky = WorldSec:AddToggle({
 		Name = "Custom Sky",
