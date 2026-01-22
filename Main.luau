@@ -553,6 +553,26 @@ local Window = Fatality.new({
 	Expire = "N/A",
 })
 
+local menuOpen = true
+
+local function toggleMenu()
+	menuOpen = not menuOpen
+	if menuOpen then
+		Window:Open()
+	else
+		Window:Close()
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	if input.KeyCode == Enum.KeyCode.Insert
+	or input.KeyCode == Enum.KeyCode.End then
+		toggleMenu()
+	end
+end)
+
 local RageTab = Window:AddMenu({
 	Name = "RAGE",
 	Icon = "skull"
