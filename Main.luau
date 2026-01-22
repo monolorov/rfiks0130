@@ -1071,8 +1071,7 @@ do
 		Name = "Atmosphere Enabled",
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			-- TODO: Add Atmosphere support to Visuals module
-			warn("[NEMESIS] Atmosphere not yet implemented in Visuals module")
+			Visuals:SetAtmosphereEnabled(v)
 		end
 	})
 
@@ -1084,7 +1083,7 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Atmosphere not yet implemented")
+			Visuals:SetAtmosphereDensity(v)
 		end
 	})
 
@@ -1096,25 +1095,25 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Atmosphere not yet implemented")
+			Visuals:SetAtmosphereOffset(v)
 		end
 	})
 
 	UI.AtmoColor = PostProcessing:AddColorPicker({
 		Name = "Atmosphere Color",
 		Default = Color3.fromRGB(200, 200, 200),
-		Callback = function(color)
+		Callback = function(c)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Atmosphere not yet implemented")
+			Visuals:SetAtmosphereColor(c)
 		end
 	})
 
 	UI.AtmoDecay = PostProcessing:AddColorPicker({
 		Name = "Atmosphere Decay",
 		Default = Color3.fromRGB(128, 128, 128),
-		Callback = function(color)
+		Callback = function(c)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Atmosphere not yet implemented")
+			Visuals:SetAtmosphereDecay(c)
 		end
 	})
 
@@ -1126,7 +1125,7 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Atmosphere not yet implemented")
+			Visuals:SetAtmosphereGlare(v)
 		end
 	})
 
@@ -1138,7 +1137,7 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Atmosphere not yet implemented")
+			Visuals:SetAtmosphereHaze(v)
 		end
 	})
 
@@ -1146,7 +1145,7 @@ do
 		Name = "Bloom Enabled",
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Bloom not yet implemented")
+			Visuals:SetBloomEnabled(v)
 		end
 	})
 
@@ -1154,11 +1153,11 @@ do
 		Name = "Bloom Intensity",
 		Min = 0,
 		Max = 5,
-		Default = 0.5,
+		Default = 2,
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Bloom not yet implemented")
+			Visuals:SetBloomIntensity(v)
 		end
 	})
 
@@ -1166,10 +1165,10 @@ do
 		Name = "Bloom Size",
 		Min = 0,
 		Max = 100,
-		Default = 24,
+		Default = 56,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Bloom not yet implemented")
+			Visuals:SetBloomSize(v)
 		end
 	})
 
@@ -1177,11 +1176,11 @@ do
 		Name = "Bloom Threshold",
 		Min = 0,
 		Max = 5,
-		Default = 2,
+		Default = 0.8,
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] Bloom not yet implemented")
+			Visuals:SetBloomThreshold(v)
 		end
 	})
 
@@ -1189,7 +1188,7 @@ do
 		Name = "ColorCorrection Enabled",
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] ColorCorrection not yet implemented")
+			Visuals:SetColorCorrectionEnabled(v)
 		end
 	})
 
@@ -1201,7 +1200,7 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] ColorCorrection not yet implemented")
+			Visuals:SetColorCorrectionBrightness(v)
 		end
 	})
 
@@ -1213,7 +1212,7 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] ColorCorrection not yet implemented")
+			Visuals:SetColorCorrectionContrast(v)
 		end
 	})
 
@@ -1225,16 +1224,16 @@ do
 		Round = 2,
 		Callback = function(v)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] ColorCorrection not yet implemented")
+			Visuals:SetColorCorrectionSaturation(v)
 		end
 	})
 
 	UI.CCTint = PostProcessing:AddColorPicker({
 		Name = "Tint Color",
 		Default = Color3.fromRGB(255, 255, 255),
-		Callback = function(color)
+		Callback = function(c)
 			if APPLYING_CONFIG then return end
-			warn("[NEMESIS] ColorCorrection not yet implemented")
+			Visuals:SetColorCorrectionTint(c)
 		end
 	})
 
