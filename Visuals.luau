@@ -27,6 +27,10 @@ function VisualsModule.new(config)
 	self.HITSOUND_VOLUME = 1
 	self.HITSOUND_PRESET = "bell"
 
+self.GHOST_BASE_TRANSPARENCY = 0.7
+self.GHOST_FADE_RADIUS = 1.6
+self.GHOST_FADE_POWER = 1.2
+
 	self.KEYBIND_LIST_VISIBLE = true
 
 	self.TRACER_ENABLED = false
@@ -1167,7 +1171,7 @@ function VisualsModule:CreateBacktrackGhost()
 			v.CanQuery = false
 			v.Massless = true
 			v.Material = Enum.Material.ForceField
-			v.Transparency = 0.7
+			v.Transparency = self.GHOST_BASE_TRANSPARENCY
 			v.Color = self.BACKTRACK_GHOST_COLOR
 			v.CastShadow = false
 
@@ -1226,16 +1230,30 @@ function VisualsModule:UpdateBacktrackGhostPose(targetCFrame, isFakelag)
 	local dt = tonumber(self._ghostDt) or (1 / 60)
 	local alpha = math.clamp(self.GHOST_SMOOTH_SPEED * dt, 0, 1)
 
-	for _, ghostPart in ipairs(self.ghostParts) do
-		local srcPart = srcChar:FindFirstChild(ghostPart.Name, true)
-		if srcPart then
-			local targetCF = offset * srcPart.CFrame
-			local lastCF = self.ghostLastCFrames[ghostPart] or ghostPart.CFrame
-			local newCF = lastCF:Lerp(targetCF, alpha)
-			ghostPart.CFrame = newCF
-			self.ghostLastCFrames[ghostPart] = newCF
+for _, ghostPart in ipairs(self.ghostParts) do
+	local srcPart = srcChar:FindFirstChild(ghostPart.Name, true)
+	if srcPart then
+		local targetCF = offset * srcPart.CFrame
+		local lastCF = self.ghostLastCFrames[ghostPart] or ghostPart.CFrame
+		local newCF = lastCF:Lerp(targetCF, alpha)
+		ghostPart.CFrame = newCF
+		self.ghostLastCFrames[ghostPart] = newCF
+
+		local dist = (newCF.Position - srcPart.Position).Magnitude
+
+		if dist < self.GHOST_FADE_RADIUS then
+			local k = math.clamp(1 - (dist / self.GHOST_FADE_RADIUS), 0, 1)
+			k = k ^ self.GHOST_FADE_POWER
+			ghostPart.Transparency = math.clamp(
+				self.GHOST_BASE_TRANSPARENCY + k * (1 - self.GHOST_BASE_TRANSPARENCY),
+				0,
+				1
+			)
+		else
+			ghostPart.Transparency = self.GHOST_BASE_TRANSPARENCY
 		end
 	end
+end
 
 	self.ghostExpireAt = tick() + self.BACKTRACK_GHOST_DURATION
 end
@@ -1499,10 +1517,9 @@ end
 
 function VisualsModule:SetBacktrackGhostColor(value)
 	self.BACKTRACK_GHOST_COLOR = value
-	if self.ghostModel then
-		for _, p in ipairs(self.ghostParts) do
-			p.Color = value
-		end
+	for _, p in ipairs(self.ghostParts) do
+		p.Color = value
+		p.Transparency = self.GHOST_BASE_TRANSPARENCY
 	end
 end
 
