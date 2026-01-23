@@ -68,7 +68,47 @@ WatermarkFrame.AnchorPoint = Vector2.new(1, 0)
 WatermarkFrame.Position = UDim2.new(1, -10, 0, 50)
 WatermarkFrame.Size = UDim2.new(0, 300, 0, 32)
 WatermarkFrame.ZIndex = 10
+WatermarkFrame.Active = true
 WatermarkFrame.Parent = WatermarkGui
+
+do
+	local dragging = false
+	local dragStart
+	local startPos
+	local dragInput
+
+	WatermarkFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = WatermarkFrame.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	WatermarkFrame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input == dragInput then
+			local delta = input.Position - dragStart
+			WatermarkFrame.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
 
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 6)
