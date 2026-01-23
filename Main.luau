@@ -76,6 +76,7 @@ do
 	local dragStart
 	local startPos
 	local dragInput
+	local dragTween
 
 	WatermarkFrame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -100,12 +101,24 @@ do
 	UserInputService.InputChanged:Connect(function(input)
 		if dragging and input == dragInput then
 			local delta = input.Position - dragStart
-			WatermarkFrame.Position = UDim2.new(
+			local target = UDim2.new(
 				startPos.X.Scale,
 				startPos.X.Offset + delta.X,
 				startPos.Y.Scale,
 				startPos.Y.Offset + delta.Y
 			)
+
+			if dragTween then
+				dragTween:Cancel()
+			end
+
+			dragTween = TweenService:Create(
+				WatermarkFrame,
+				TweenInfo.new(0.12, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+				{ Position = target }
+			)
+
+			dragTween:Play()
 		end
 	end)
 end
