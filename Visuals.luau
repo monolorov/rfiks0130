@@ -607,8 +607,8 @@ function VisualsModule:CreateOffscreenArrows()
 	local function createArrow(plr)
 		local img = Instance.new("ImageLabel")
 		img.Name = plr.Name .. "_Arrow"
-		img.Size = UDim2.fromOffset(68, 68)
-img:SetAttribute("BaseSize", 68)
+		img.Size = UDim2.fromOffset(45, 45)
+img:SetAttribute("BaseSize", 45)
 		img.AnchorPoint = Vector2.new(0.5, 0.5)
 		img.BackgroundTransparency = 1
 		img.Image = "rbxassetid://121771059734689"
@@ -713,24 +713,8 @@ local t = tick()
 			arrow.ImageColor3 = self.OFFSCREEN_COLOR
 			arrow.Visible = true
 
-local pulse = math.abs(math.sin(t * 6))
-
-local baseSize = arrow:GetAttribute("BaseSize") or 68
-local scale = 1 + pulse * 0.45
-
-arrow.Size = UDim2.fromOffset(
-	baseSize * scale,
-	baseSize * scale
-)
-
-arrow.ImageTransparency = 0.15 + pulse * 0.25
-
-arrow.Size = UDim2.fromOffset(
-	baseSize * scale,
-	baseSize * scale
-)
-
-arrow.ImageTransparency = 0.1 + pulse * 0.35
+local pulse = math.abs(math.sin(t * 8))
+arrow.ImageTransparency = 0.05 + pulse * 0.65
 		end
 	end)
 end
