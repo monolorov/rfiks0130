@@ -161,8 +161,9 @@ NemesisGradient.Parent = NemesisLabel
 local CenterImage = Instance.new("ImageLabel")
 CenterImage.BackgroundTransparency = 1
 CenterImage.BorderSizePixel = 0
-CenterImage.Position = UDim2.new(0.44618395, 0, 0.489156634, 0)
-CenterImage.Size = UDim2.new(0.107632093, 0, 0.0228915662, 0)
+CenterImage.Position = UDim2.new(0.47, 0, 0.489, 0)
+CenterImage.Size = UDim2.new(0.061, 0, 0.023, 0)
+CenterImage.SizeConstraint = Enum.SizeConstraint.RelativeXY
 CenterImage.Image = "rbxassetid://101484652640045"
 CenterImage.ImageColor3 = Color3.fromRGB(255, 69, 72)
 CenterImage.ImageTransparency = 0.51
@@ -183,6 +184,13 @@ CenterText.TextSize = 14
 CenterText.TextWrapped = true
 CenterText.ZIndex = 12
 CenterText.Parent = WatermarkGui
+
+local ImageStroke = Instance.new("UIStroke")
+ImageStroke.Thickness = 0.5
+ImageStroke.Color = Color3.fromRGB(0, 0, 0)
+ImageStroke.Transparency = 0
+ImageStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ImageStroke.Parent = CenterImage
 
 
 local CenterGradient = Instance.new("UIGradient")
@@ -242,8 +250,8 @@ RunService.RenderStepped:Connect(function(dt)
 CenterGradient.Rotation = (CenterGradient.Rotation + dt * 60) % 360
 
 -- Pulse effect
-local pulse = 0.55 + math.sin(tick() * 1.5) * 0.08
-CenterImage.ImageTransparency = math.clamp(pulse, 0.35, 0.7)
+local pulse = 0.6 + math.sin(tick() * 1.5) * 0.1
+CenterImage.ImageTransparency = math.clamp(pulse, 0.5, 0.75)
 
 	local ping = 0
 	pcall(function()
