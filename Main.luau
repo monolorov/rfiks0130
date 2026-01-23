@@ -161,14 +161,13 @@ NemesisGradient.Parent = NemesisLabel
 local CenterImage = Instance.new("ImageLabel")
 CenterImage.BackgroundTransparency = 1
 CenterImage.BorderSizePixel = 0
-CenterImage.AnchorPoint = Vector2.new(0.5, 0.5)
-CenterImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+CenterImage.Position = UDim2.new(0.44618395, 0, 0.489156634, 0)
 CenterImage.Size = UDim2.new(0.107632093, 0, 0.0228915662, 0)
 CenterImage.Image = "rbxassetid://101484652640045"
 CenterImage.ImageColor3 = Color3.fromRGB(255, 69, 72)
 CenterImage.ImageTransparency = 0.51
 CenterImage.ZIndex = 11
-CenterImage.Parent = WatermarkFrame
+CenterImage.Parent = WatermarkGui
 
 
 local CenterText = Instance.new("TextLabel")
@@ -183,7 +182,7 @@ CenterText.TextColor3 = Color3.fromRGB(255, 255, 255)
 CenterText.TextSize = 14
 CenterText.TextWrapped = true
 CenterText.ZIndex = 12
-CenterText.Parent = WatermarkFrame
+CenterText.Parent = WatermarkGui
 
 
 local CenterGradient = Instance.new("UIGradient")
