@@ -352,9 +352,9 @@ function RageModule:FindTarget()
 			if not part or not self:IsPartVisible(part, data.character) then
 				continue
 			end
+
 		elseif self.MIN_DAMAGE_ENABLED then
 			part = nil
-
 			for _, group in ipairs(self.MIN_DAMAGE_PRIORITY) do
 				for _, partName in ipairs(group.parts) do
 					local p = data.character:FindFirstChild(partName)
@@ -368,7 +368,12 @@ function RageModule:FindTarget()
 				end
 				if part then break end
 			end
+			if not part then
+				continue
+			end
 
+		else
+			part = self:GetBestVisiblePart(data.character, dist)
 			if not part then
 				continue
 			end
