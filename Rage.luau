@@ -373,7 +373,28 @@ function RageModule:FindTarget()
 			end
 
 		else
-			part = self:GetBestVisiblePart(data.character, dist)
+			local visible = false
+			for _, partName in ipairs({
+				"Head",
+				"UpperTorso",
+				"LowerTorso",
+				"Torso",
+				"HumanoidRootPart",
+				"LeftUpperArm","RightUpperArm",
+				"LeftUpperLeg","RightUpperLeg"
+				}) do
+				local p = data.character:FindFirstChild(partName)
+				if p and self:IsPartVisible(p, data.character) then
+					visible = true
+					break
+				end
+			end
+
+			if not visible then
+				continue
+			end
+
+			part = data.character:FindFirstChild("Head")
 			if not part then
 				continue
 			end
