@@ -4,7 +4,7 @@ RageModule.__index = RageModule
 
 function RageModule.new(config)
 	local self = setmetatable({}, RageModule)
-	
+
 	-- Services
 	self.player = config.Player
 	self.Players = config.Services.Players
@@ -13,7 +13,7 @@ function RageModule.new(config)
 	self.ReplicatedStorage = config.Services.ReplicatedStorage
 	self.Notification = config.Notification
 	self.Visuals = config.Visuals
-	
+
 	-- Settings
 	self.RAGE_ENABLED = false
 	self.RAGE_HITPART = "Head"
@@ -24,15 +24,15 @@ function RageModule.new(config)
 	self.AIRSHOT_ACTIVE = false
 	self.AUTO_EQUIP_SSG = false
 	self.MAX_DISTANCE = 1000
-	
+
 	self.PREDICTION_ENABLED = true
 	self.PREDICTION_STRENGTH = 1.2
 	self.BULLET_SPEED = 800
-	
+
 	self.MIN_DAMAGE_ENABLED = false
 	self.MIN_DAMAGE_VALUE = 0
 	self.BASE_DAMAGE = 54
-	
+
 	-- Internal state
 	self.lastShot = 0
 	self.FIRE_RATE = 0.1
@@ -44,7 +44,7 @@ function RageModule.new(config)
 	self.lastPlayerListUpdate = 0
 	self.PLAYER_LIST_UPDATE_RATE = 0.5
 	self.autoEquippedOnce = false
-	
+
 	self.BODY_PART_MULTIPLIERS = {
 		["Head"] = 4.0,
 		["UpperTorso"] = 1.0,
@@ -66,14 +66,14 @@ function RageModule.new(config)
 		["Left Leg"] = 0.6,
 		["Right Leg"] = 0.6,
 	}
-	
+
 	self.MIN_DAMAGE_PRIORITY = {
 		{name = "Legs", parts = {"LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg", "Left Leg", "Right Leg"}, multiplier = 0.6},
 		{name = "Arms", parts = {"LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "LeftHand", "RightHand", "Left Arm", "Right Arm"}, multiplier = 0.75},
 		{name = "Body", parts = {"UpperTorso", "LowerTorso", "Torso", "HumanoidRootPart"}, multiplier = 1.0},
 		{name = "Head", parts = {"Head"}, multiplier = 4.0},
 	}
-	
+
 	return self
 end
 
@@ -151,11 +151,56 @@ function RageModule:CalculatePotentialDamage(partName, distance)
 	return math.floor(damage)
 end
 
+function RageModule:GetBestVisiblePart(char, distance)
+	local priorities
+
+	if self.RAGE_HITPART == "Head" then
+		priorities = {
+			"Head",
+			"UpperTorso",
+			"LowerTorso",
+			"Torso",
+			"HumanoidRootPart",
+		}
+	elseif self.RAGE_HITPART == "Body" then
+		priorities = {
+			"UpperTorso",
+			"LowerTorso",
+			"Torso",
+			"HumanoidRootPart",
+			"Head",
+		}
+	elseif self.RAGE_HITPART == "Arms" then
+		priorities = {
+			"RightUpperArm","LeftUpperArm","Right Arm","Left Arm",
+			"UpperTorso","Torso",
+		}
+	elseif self.RAGE_HITPART == "Legs" then
+		priorities = {
+			"RightUpperLeg","LeftUpperLeg","Right Leg","Left Leg",
+			"LowerTorso","Torso",
+		}
+	else
+		priorities = {
+			"Head","UpperTorso","Torso","HumanoidRootPart"
+		}
+	end
+
+	for _, partName in ipairs(priorities) do
+		local part = char:FindFirstChild(partName)
+		if part and self:IsPartVisible(part, char) then
+			return part
+		end
+	end
+
+	return nil
+end
+
 function RageModule:GetTargetPart(char, distance)
 	if self.AIRSHOT_ACTIVE then
 		return char:FindFirstChild("Head")
 	end
-	
+
 	if self.MIN_DAMAGE_ENABLED then
 		for _, priorityGroup in ipairs(self.MIN_DAMAGE_PRIORITY) do
 			for _, partName in ipairs(priorityGroup.parts) do
@@ -300,11 +345,33 @@ function RageModule:FindTarget()
 		local dist = (data.rootPart.Position - myHead.Position).Magnitude
 		if dist > bestDist then continue end
 
-		local part = self:GetTargetPart(data.character, dist)
-		if not part then continue end
+		local part
 
-		if not self:IsPartVisible(part, data.character) then
-			continue
+		if self.AIRSHOT_ACTIVE then
+			part = data.character:FindFirstChild("Head")
+			if not part or not self:IsPartVisible(part, data.character) then
+				continue
+			end
+		elseif self.MIN_DAMAGE_ENABLED then
+			part = nil
+
+			for _, group in ipairs(self.MIN_DAMAGE_PRIORITY) do
+				for _, partName in ipairs(group.parts) do
+					local p = data.character:FindFirstChild(partName)
+					if p then
+						local dmg = self:CalculatePotentialDamage(partName, dist)
+						if dmg >= self.MIN_DAMAGE_VALUE and self:IsPartVisible(p, data.character) then
+							part = p
+							break
+						end
+					end
+				end
+				if part then break end
+			end
+
+			if not part then
+				continue
+			end
 		end
 
 		bestDist = dist
